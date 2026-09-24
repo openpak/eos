@@ -37,8 +37,9 @@ What is known so far is in [`docs/protocol.md`](docs/protocol.md), with sources 
 - Prod: the `.epicgames.dev` family is already claimed in the netprofile, and `nx-baas`
   terminates the TLS for it as an unrouted SNI and answers `404` from its catch-all. That is
   where the SDK stops.
-- No port block is claimed in [`ports.md`](../../ports.md) yet; the next free block in the
-  third-party range is 22620-22629.
+- Ports: block 22620-22629 in [`ports.md`](../../ports.md), registered 2026-09-24: 22620 the
+  `api.epicgames.dev` listener (TLS, Traefik `HostSNI` passthrough from 443), 22621 `/health`,
+  the rest reserved.
 - Raw material (logs, the captured config document, the Fall Guys harness) is in the
   workspace scratch folder, referenced from `docs/provenance.md`, never committed.
 
