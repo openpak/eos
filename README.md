@@ -45,7 +45,7 @@ What is known so far is in [`docs/protocol.md`](docs/protocol.md), with sources 
 
 ## Ground rules
 
-- Clean room. Read [`docs/clean-room-policy.md`](docs/clean-room-policy.md) before writing a
+- Clean room. Read [`docs/clean-room-policy.md`](https://github.com/openpak/docs/blob/main/clean-room-policy.md) before writing a
   line. Public protocol documentation, our own captures and observations, and compatibly
   licensed code are the only inputs. The captured SDK config document is a fact source, not
   a file to ship: the served document is written by hand from the fields the SDK is shown to

@@ -1,7 +1,7 @@
 # Provenance
 
 Where each non-obvious fact in [`protocol.md`](protocol.md) came from, per the
-[clean-room policy](clean-room-policy.md). Raw material stays in the workspace scratch
+[clean-room policy](https://github.com/openpak/docs/blob/main/clean-room-policy.md). Raw material stays in the workspace scratch
 folder (`~/REPOS/Openpak/scratch/`), never in this repository.
 
 | Fact | Source |
