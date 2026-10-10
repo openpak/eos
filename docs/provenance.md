@@ -18,3 +18,8 @@ folder (`~/REPOS/Openpak/scratch/`), never in this repository.
 | Fall Guys layers, verdict and sources | `servers/fall-guys/docs/design.md`, carried into [`fall-guys.md`](fall-guys.md) with its own provenance section |
 | Prior art: the only EOS emulator (client-side, PC) | `gitlab.com/Nemirtingas/nemirtingas_epic_emu` (source withdrawn; mirrors exist). Not read for code; noted so nobody looks for a server there |
 | `.epicgames.dev` family in the netprofile; `nx-baas` on-demand certificates for unrouted SNI | `deploy/netprofile-platforms.yml` and the nx-baas log on prod |
+| SDK 1.16 boot sequence (§5): paths, grant types, form field names, KWS calls, the age gate on a KWS 404 | `openpak-eos` log on prod (shapes only) and Harbor runs `eos-host`, 2026-10-10 |
+| KWS JSON field names (`country`, `consentAgeForCountry`, `kwsUserId`, `dateOfBirth`, `isMinor`, `parentEmail`), status words `GRANTED`/`PENDING`/`REJECTED` | strings in Among Us's own `EOSSDK-Switch-Shipping.nro` (extracted with `scratch/nspx`, kept in `scratch/eos/among-us/`) |
+| Among Us permission keys, `backend.innersloth.com` paths and JSON names, `ResponseFriendCode` fields | Among Us's IL2CPP `global-metadata.dat` (string literals, `[JsonProperty]` arguments, type and field names via `scratch/eos/tools/meta_types.py`) |
+| backend.innersloth.com resolved to the real Innersloth; FriendCodeFail; ONLINE greyed | Harbor `eos-host` log (`sfdnsres`) and screenshots, 2026-10-10 |
+| TMNT fault inside the EOS `.nrs` on Harbor | Harbor `eos-host` log and thread dump, 2026-10-10, twice |

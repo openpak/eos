@@ -45,6 +45,18 @@ OpenPak-answered `api.epicgames.dev`. Runs recorded 2026-09-24 on Ryujinx
 | E4: trust material | System `ssl` service with the console CA store; an OpenPak-CA leaf passes. No pin. |
 | First thing a backend must serve | The SDK config document (`protocol.md` §4). Nothing else is reached before it. |
 
+## Harbor, 2026-10-10: guest fault inside the EOS module, before any request
+
+Harbor desktop (console mode, build `64949c8e1d`), title v1.0.9 (update v589824), twice,
+deterministic. About 18 s after launch the game loads `EOSSDK-Switch-Shipping.nrs` through
+`ro` (svcBreak PreLoadDll/PostLoadDll, module at `0x2772ea6000`), and its main thread then
+calls through a pointer that is the module base plus eight bytes of code
+(`…f9400be8`, an `ldr x8,[sp,#0x10]` encoding): `Cannot execute instruction at unmapped
+address`, caller `TMNT.nss+0x1e43c`, then error 2511-8191. No DNS lookup and no request reached
+eosd. The same title got as far as the SDK config request on Ryujinx (run 2 above), so this is
+Harbor's loading or relocation of the `.nrs`, not the backend. Among Us loads its EOS module
+(`.nro`) the same way and works.
+
 ## Open
 
 - Serve a config document and see what the SDK asks for next (expected: Connect login).

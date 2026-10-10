@@ -13,7 +13,7 @@ HIGH, MEDIUM, LOW, SPECULATIVE.
 | --- | --- | --- | --- |
 | Teenage Mutant Ninja Turtles: Shredder's Revenge | `0100FE701475A000` (v1.0.9) | 1.15.3, statically linked | research active, see [`tmnt-shredders-revenge.md`](tmnt-shredders-revenge.md) |
 | Fall Guys | `0100C3C015738800` | runtime-loaded `EOSSDK-Switch-Shipping.nrs` | identity layer only; the game itself stays not feasible, see [`fall-guys.md`](fall-guys.md) |
-| Among Us | — | unknown | `api.epicgames.dev` is on its host list; whether login is required is open (`servers/among-us` design §5 item 5) |
+| Among Us | `0100B0C013912000` (2026.18.0, v3997696) | 1.16.4, runtime-loaded `Data/Plugins/EOSSDK-Switch-Shipping.nro` | EOS sign-in served end to end (2026-10-10); blocked next on `backend.innersloth.com`, see [`among-us.md`](among-us.md) |
 
 The SDK identifies itself on every request (CONFIRMED):
 
@@ -96,27 +96,44 @@ credentials, for any platform id, with a JSON document of about 20 KB (CONFIRMED
   `next-session.md`). The clean-room answer is a hand-written document with the fields the
   SDK is shown to read, not the captured one.
 
-## 5. Connect login (UNCONFIRMED HYPOTHESIS)
+## 5. Boot sequence of SDK 1.16 (CONFIRMED, Among Us on Harbor, 2026-10-10)
 
-From Epic's public Connect Web API documentation, the SDK's Connect login is an OAuth 2
-token request: `POST /auth/v1/oauth/token`, `grant_type=external_auth`, an
-`external_auth_type` naming the Nintendo credential (`nintendo_nsa_id_token` or
-`nintendo_id_token`, the C SDK's `EOS_EExternalCredentialType`), `external_auth_token`
-carrying the id_token, plus `deployment_id` and a `nonce`; HTTP basic auth with the title's
-client id and secret. The reply is a bearer token, a product user id, and expiry.
+Every request below is answered by `eosd` (`cmd/eosd`); the order is the one Among Us sends.
 
-On an OpenPak console the NSA id_token is minted by `nx-baas` (`kid openpak-baas-key-1`), so
-the EOS backend verifies it the same way `servers/demonware` does: through
-`nx-baas /internal/switch/identity`. That is the fact that reverses the identity verdict in
-[`fall-guys.md`](fall-guys.md): Epic verifying the token upstream was the wall only while
-Epic was the backend.
+1. `GET /sdk/v1/default?platformId=SWT`: the config document (§4). A served document ends the
+   retry loop at once.
+2. `POST /auth/v1/oauth/token`, HTTP basic with the title's client id and secret, form
+   `grant_type=client_credentials&deployment_id=<32 hex>`. Answered with a bearer JWT,
+   `token_type`, `expires_at`, `expires_in`, `features`, `deployment_id` (organization, product
+   and sandbox ids empty: the SDK did not mind).
+3. `GET /sdk/v1/product/<productId>?deploymentId=<id>&platformId=SWT`: the per-product config
+   document, with the client token. Same document as 1.
+4. `GET /kws/v1/country/ageGateInfo` (client token). Answered `{"country","consentAgeForCountry"}`
+   (field names from the SDK's own strings).
+5. `POST /auth/v1/oauth/token`, form `grant_type=external_auth`,
+   `external_auth_type=nintendo_nsa_id_token`, `external_auth_token=<the console's NSA id_token,
+   ~1260 bytes>`, `deployment_id`, `nonce`, `display_name` (the Nintendo nickname). This is
+   Connect login. `eosd` verifies the token through nx-baas `/internal/switch/identity` (it is
+   a BAAS id_token nx-baas minted) and answers `access_token`, `id_token` (both RS256 JWTs,
+   `sub` = PUID, keys at `/auth/v1/oauth/jwks`), `product_user_id`, `organization_user_id`,
+   `product_user_id_created:false`, `nonce`, `expires_at`, `expires_in`, `deployment_id`. The SDK
+   accepted the login on the first try; no `CreateUser`/continuance round was needed.
+6. `GET /kws/v1/users/<puid>/permissions` (user token). Answered as an adult with the title's
+   permission keys granted: `{"kwsUserId","dateOfBirth","isMinor":false,"parentEmail",
+   "permissions":{"<key>":"GRANTED"}}`. A 404 here sends Among Us to its own date-of-birth age
+   gate; the age gate itself is the game's, shown once per save.
+7. `POST /telemetry/data/datarouter/api/v1/public/data` in the background (answered 204).
 
-To be measured (E-Connect in `next-session.md`): the exact path and field names the Switch
-SDK 1.15.3 sends, the `external_auth_type` value, and what it does with the reply.
+The PUID is not stored: it is HMAC(EOS_ID_SECRET, deployment, BAAS user id), 32 hex, stable for
+a player in a title across logins and restarts and different between titles.
 
 ## 6. What each title uses after login
 
-Unknown for every title. The SDK config names the whole surface; the title decides. TMNT's
-online co-op is expected to be Lobbies plus P2P (SPECULATIVE, from the game's cross-play
-feature set). Fall Guys is Connect only, then Catapult and Epic-hosted match servers
-([`fall-guys.md`](fall-guys.md)).
+- **Among Us**: KWS (above), then its own account backend `backend.innersloth.com`, not an EOS
+  service; [`among-us.md`](among-us.md). Its matchmaker and game server are Impostor
+  (`servers/among-us`).
+- **TMNT**: not reached; the game faults inside its EOS module on Harbor before any request
+  ([`tmnt-shredders-revenge.md`](tmnt-shredders-revenge.md)). Lobbies plus P2P expected
+  (SPECULATIVE).
+- **Fall Guys**: Connect only, then Catapult and Epic-hosted match servers
+  ([`fall-guys.md`](fall-guys.md)).
