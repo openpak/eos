@@ -4,9 +4,9 @@ package main
 // EOS Connect login and before it lets the player online ("Could not connect to your Among Us
 // Account. (Error FriendCodeFail)" when it is not answered, 2026-10-10 on Harbor).
 //
-// It lives here rather than in servers/among-us because its whole identity is the EOS one:
+// It lives here rather than in platforms/switch/games/among-us because its whole identity is the EOS one:
 // every request carries the EOS id_token eosd minted, so eosd checks it with its own key and
-// needs nobody's JWKS. Impostor (servers/among-us) stays the matchmaker and game server.
+// needs nobody's JWKS. Impostor (platforms/switch/games/among-us) stays the matchmaker and game server.
 //
 // The paths are the game's (https://backend.innersloth.com/api/ + user/...), the JSON names its
 // [JsonProperty] names, JSON:API style: {"data": {"type": ..., "attributes": {...}}}. What the

@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 # Epic Online Services for the Switch titles that use it. Plain HTTP inside the pod network:
 # Traefik terminates the console's TLS for api.epicgames.dev and forwards the stream, the same
-# arrangement as servers/klei and servers/t17.
+# arrangement as platforms/switch/games/klei and servers/t17.
 FROM --platform=$BUILDPLATFORM golang:1.26-alpine AS build
 ARG TARGETOS TARGETARCH
 WORKDIR /src

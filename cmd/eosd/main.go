@@ -7,7 +7,7 @@
 // NSA id_token, which nx-baas minted and therefore verifies.
 //
 // Plain HTTP inside the pod network; Traefik terminates the console's TLS for the EOS names and
-// forwards the stream, the same arrangement as servers/klei and servers/t17.
+// forwards the stream, the same arrangement as platforms/switch/games/klei and servers/t17.
 //
 // What the SDK sends was measured, not assumed: docs/protocol.md, kept in step with this code.
 package main

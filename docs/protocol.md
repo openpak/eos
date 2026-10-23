@@ -1,5 +1,13 @@
 # Epic Online Services on Switch: protocol notes
 
+> **Current Switch client (2026-10-13): Harbor**, at
+> `~/REPOS/Openpak/emulators/harbor`. Harbor is an independent
+> OpenPak project based on Eden. Citron, Ryujinx (desktop and Android), and
+> the former OpenPak Eden checkouts have been removed. References to those
+> forks below record historical evidence only: do not run their commands,
+> reinstall them, or select them for current work. Use Harbor's README and
+> current handoff for builds and testing; old results do not establish Harbor parity.
+
 The facts an OpenPak EOS backend is built from, written down before any code. Every entry
 says what the shipped EOS SDK sends or expects; [`provenance.md`](provenance.md) says where
 each fact came from. Nothing here describes another implementation's code.
@@ -131,7 +139,7 @@ a player in a title across logins and restarts and different between titles.
 
 - **Among Us**: KWS (above), then its own account backend `backend.innersloth.com`, not an EOS
   service; [`among-us.md`](among-us.md). Its matchmaker and game server are Impostor
-  (`servers/among-us`).
+  (`platforms/switch/games/among-us`).
 - **TMNT**: not reached; the game faults inside its EOS module on Harbor before any request
   ([`tmnt-shredders-revenge.md`](tmnt-shredders-revenge.md)). Lobbies plus P2P expected
   (SPECULATIVE).

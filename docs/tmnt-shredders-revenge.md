@@ -1,5 +1,13 @@
 # Teenage Mutant Ninja Turtles: Shredder's Revenge
 
+> **Current Switch client (2026-10-13): Harbor**, at
+> `~/REPOS/Openpak/emulators/harbor`. Harbor is an independent
+> OpenPak project based on Eden. Citron, Ryujinx (desktop and Android), and
+> the former OpenPak Eden checkouts have been removed. References to those
+> forks below record historical evidence only: do not run their commands,
+> reinstall them, or select them for current work. Use Harbor's README and
+> current handoff for builds and testing; old results do not establish Harbor parity.
+
 Title `0100FE701475A000`, v1.0.9, with the Dimension Shellshock and Radical Reptiles DLC.
 Dotemu/Tribute; EOS SDK 1.15.3 statically linked. The first EOS title to reach an
 OpenPak-answered `api.epicgames.dev`. Runs recorded 2026-09-24 on Ryujinx

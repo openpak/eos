@@ -2,7 +2,7 @@
 
 Title `0100B0C013912000`, update 2026.18.0 (v3997696). Unity IL2CPP; EOS SDK 1.16.4 as
 `Data/Plugins/EOSSDK-Switch-Shipping.nro`, loaded at runtime. Its matchmaker and game server are
-Impostor (`servers/among-us`). Runs recorded 2026-10-10 on Harbor (desktop, console mode,
+Impostor (`platforms/switch/games/among-us`). Runs recorded 2026-10-10 on Harbor (desktop, console mode,
 firmware 23.0.1, build `64949c8e1d`), run directory `eos-host`, test account email3.
 
 ## What the game needs, in order
@@ -17,7 +17,7 @@ firmware 23.0.1, build `64949c8e1d`), run directory `eos-host`, test account ema
    name is outside the signed redirect ceiling, so Harbor resolves it to the real Innersloth
    (`104.20.x.x`), which refuses an OpenPak EOS token. Waiting on the owner's ceiling signature
    (`.innersloth.com`).
-4. `matchmaker.among.us /api/user`, `/api/games`, then UDP to Impostor: `servers/among-us`,
+4. `matchmaker.among.us /api/user`, `/api/games`, then UDP to Impostor: `platforms/switch/games/among-us`,
    live since 2026-09-11, never reached yet.
 
 ## The Innersloth backend as eosd answers it

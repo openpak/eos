@@ -1,5 +1,13 @@
 # Fall Guys on Nintendo Switch
 
+> **Current Switch client (2026-10-13): Harbor**, at
+> `~/REPOS/Openpak/emulators/harbor`. Harbor is an independent
+> OpenPak project based on Eden. Citron, Ryujinx (desktop and Android), and
+> the former OpenPak Eden checkouts have been removed. References to those
+> forks below record historical evidence only: do not run their commands,
+> reinstall them, or select them for current work. Use Harbor's README and
+> current handoff for builds and testing; old results do not establish Harbor parity.
+
 Carried forward unchanged from `servers/fall-guys` (feasibility study, 2026-09-09 to 2026-09-15), which [`servers/eos`](../README.md) supersedes. Its verdict on the **match servers** (layer 3) stands. Its verdict on **identity** (layer 1) is what this repository exists to overturn: see [`protocol.md`](protocol.md) and [`tmnt-shredders-revenge.md`](tmnt-shredders-revenge.md), where an OpenPak console reaches an OpenPak-answered `api.epicgames.dev` over TLS and gets as far as the EOS SDK lets it.
 
 ---

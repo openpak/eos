@@ -1,5 +1,13 @@
 # Fall Guys: evidence needed
 
+> **Current Switch client (2026-10-13): Harbor**, at
+> `~/REPOS/Openpak/emulators/harbor`. Harbor is an independent
+> OpenPak project based on Eden. Citron, Ryujinx (desktop and Android), and
+> the former OpenPak Eden checkouts have been removed. References to those
+> forks below record historical evidence only: do not run their commands,
+> reinstall them, or select them for current work. Use Harbor's README and
+> current handoff for builds and testing; old results do not establish Harbor parity.
+
 Carried forward from `servers/fall-guys/docs/evidence-needed.md`. E3 and E4 are now answered for a sibling EOS title by [`tmnt-shredders-revenge.md`](tmnt-shredders-revenge.md); E1 remains the only experiment that can reopen Fall Guys itself.
 
 ---

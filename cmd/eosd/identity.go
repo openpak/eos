@@ -5,7 +5,7 @@ package main
 // The Nintendo id_token an EOS Connect login carries is a BAAS id_token OpenPak itself signed.
 // /internal/switch/identity verifies it and also answers what a signature cannot: whether the
 // account is banned, and "this player is online now", which the titles grid counts playtime from.
-// Same call as servers/klei.
+// Same call as platforms/switch/games/klei.
 
 import (
 	"bytes"

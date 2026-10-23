@@ -1,5 +1,13 @@
 # eos
 
+> **Current Switch client (2026-10-13): Harbor**, at
+> `~/REPOS/Openpak/emulators/harbor`. Harbor is an independent
+> OpenPak project based on Eden. Citron, Ryujinx (desktop and Android), and
+> the former OpenPak Eden checkouts have been removed. References to those
+> forks below record historical evidence only: do not run their commands,
+> reinstall them, or select them for current work. Use Harbor's README and
+> current handoff for builds and testing; old results do not establish Harbor parity.
+
 OpenPak's Epic Online Services backend for Nintendo Switch titles: the `api.epicgames.dev`
 the EOS SDK inside a game dials once the console's DNS points at OpenPak. One repository for
 the network, like [`servers/demonware`](../demonware) and [`servers/photon`](../photon), with
@@ -36,7 +44,7 @@ What is known so far is in [`docs/protocol.md`](docs/protocol.md), with sources 
 
 `cmd/eosd`, one Go binary, plain HTTP on 22620 (health 22621) behind a Traefik TCP router that
 terminates the console's TLS for `api.epicgames.dev` and `backend.innersloth.com` with an
-OpenPak-CA leaf (`klei-http1` ALPN pin), like `servers/klei`.
+OpenPak-CA leaf (`klei-http1` ALPN pin), like `platforms/switch/games/klei`.
 
 | Path | What |
 | --- | --- |
