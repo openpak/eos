@@ -163,11 +163,16 @@ func (s *server) innersloth(w http.ResponseWriter, r *http.Request) {
 		out = data("purchase", map[string]any{"item_id": attrRaw(body, "item_id"),
 			"currency_type": attrRaw(body, "currency_type"), "platform": attrRaw(body, "platform"), "item_cost": 0})
 	case (path == "user/validate-receipt" || path == "user/validate-receipt-batch") && r.Method == http.MethodPost:
-		// ValidateReceipt {entitlement_type, receipt: {items}}; on Switch the receipt is the
-		// console's own DLC list (SwitchOnDiskDLCReceipt). The console already checked ownership,
-		// so the receipt is accepted as sent. Reply shape unmeasured: echo the request's attributes.
-		log.Printf("[innersloth] %s entitlement_type=%s body=%s", path, attr(body, "entitlement_type"),
+		kind := receiptKind(body)
+		log.Printf("[innersloth] %s entitlement_type=%s kind=%s body=%s", path, attr(body, "entitlement_type"), kind,
 			bodyShape(r.Header.Get("Content-Type"), body))
+		if kind != "console" {
+			status = 403
+			out = map[string]any{"errors": []any{map[string]any{"code": "403", "title": "Forbidden",
+				"detail": "receipts from " + kind + " cannot be verified on OpenPak"}}}
+			break
+		}
+		// Reply shape unmeasured: echo the request's attributes.
 		out = data("receipt", attrsOf(body))
 	default:
 		log.Printf("[innersloth] !! unhandled %s %s%s headers=%s body=%s", r.Method, logPath(r.URL.Path),
@@ -186,6 +191,54 @@ func data(typ string, attrs any) map[string]any {
 func (s *server) usernameDoc(puid string) map[string]any {
 	n, d := friendCode(puid)
 	return data("user", map[string]any{"username": n, "discriminator": d})
+}
+
+// receiptKind is the per-platform seam for purchases. ValidateReceipt carries entitlement_type
+// ("dlc", "in-app-purchase", "innersloth-receipt") and a receipt whose shape names the store:
+//
+//   - {items: [...]}: Switch on-disk DLC (SwitchOnDiskDLCReceipt) or an InnerslothReceipt. The
+//     console checked ownership itself (aoc), so the list is taken as sent: "console".
+//   - {receiptJSON, productID} or {Store, TransactionID, Payload}: Apple / Google ("mobile").
+//   - {item_id, token}: Microsoft Store, an XSTS token ("xbox").
+//   - {catalog_item_id, entitlement_id}: Epic Games Store ("epic").
+//
+// Only "console" is accepted: the others need the real store to verify, which OpenPak is not.
+// A batch is "console" only when every receipt in it is.
+func receiptKind(body []byte) string {
+	one := func(r map[string]json.RawMessage) string {
+		switch {
+		case r["items"] != nil:
+			return "console"
+		case r["token"] != nil:
+			return "xbox"
+		case r["catalog_item_id"] != nil || r["entitlement_id"] != nil:
+			return "epic"
+		case r["receiptJSON"] != nil || r["Payload"] != nil:
+			return "mobile"
+		}
+		return "unknown"
+	}
+	a := attrsOf(body)
+	var list []struct {
+		Receipt map[string]json.RawMessage `json:"receipt"`
+	}
+	if json.Unmarshal(a["receipts"], &list) == nil && len(list) > 0 {
+		for _, r := range list {
+			if k := one(r.Receipt); k != "console" {
+				return k
+			}
+		}
+		return "console"
+	}
+	var r map[string]json.RawMessage
+	if json.Unmarshal(a["receipt"], &r) != nil {
+		// A receipt sent as a JSON string (the client's own serialised object).
+		var str string
+		if json.Unmarshal(a["receipt"], &str) != nil || json.Unmarshal([]byte(str), &r) != nil {
+			return "unknown"
+		}
+	}
+	return one(r)
 }
 
 // attrsOf returns a request body's data.attributes, or the body itself when it is not JSON:API.

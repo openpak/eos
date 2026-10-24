@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 )
 
@@ -57,6 +58,19 @@ func TestInnerslothShapes(t *testing.T) {
 	r := call(tokA, "POST", "user/validate-receipt", `{"data":{"type":"receipt","attributes":{"entitlement_type":"dlc","receipt":{"items":["a"]}}}}`)
 	if r["entitlement_type"] != "dlc" {
 		t.Fatalf("receipt: %v", r)
+	}
+	for body, want := range map[string]int{
+		`{"data":{"attributes":{"entitlement_type":"in-app-purchase","receipt":{"item_id":"x","token":"t"}}}}`:     403,
+		`{"data":{"attributes":{"entitlement_type":"in-app-purchase","receipt":"{\"Store\":\"AppleAppStore\"}"}}}`: 403,
+		`{"data":{"attributes":{"receipts":[{"entitlement_type":"dlc","receipt":{"items":["a"]}}]}}}`:              200,
+	} {
+		path := "user/validate-receipt"
+		if strings.Contains(body, "receipts") {
+			path += "-batch"
+		}
+		if rec := do(s, "POST", "https://backend.innersloth.com/api/"+path, body, map[string]string{"Authorization": "Bearer " + tokA}); rec.Code != want {
+			t.Errorf("%s: %d, want %d", body, rec.Code, want)
+		}
 	}
 	call(tokA, "POST", "user/report-player", `{"data":{"type":"report","attributes":{"game_server_id":1,"game_id":2,"reportee_client_id":3,"reason_id":1}}}`)
 
