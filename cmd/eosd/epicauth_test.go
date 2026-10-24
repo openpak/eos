@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"net/url"
+	"strings"
 	"testing"
 )
 
@@ -93,5 +94,19 @@ func TestEpicAuthRefusesWhatNxBaasRefuses(t *testing.T) {
 		"external_auth_token": {"x.y.z"}})
 	if rec := do(s, "POST", "https://api.epicgames.dev/epic/oauth/v2/token", body, hdr); rec.Code != 400 {
 		t.Fatalf("got %d %s", rec.Code, rec.Body)
+	}
+}
+
+func TestEpicSocialAnswersNone(t *testing.T) {
+	s := testServer(t)
+	for _, c := range []struct{ method, path, want string }{
+		{"GET", "/epic/friends/v1/0123456789abcdef0123456789abcdef", "[]"},
+		{"GET", "/sanctions/v1/productUser/0123456789abcdef0123456789abcdef/active/", `"elements":[]`},
+		{"POST", "/user/v1/accounts/search", "[]"},
+	} {
+		rec := do(s, c.method, "https://api.epicgames.dev"+c.path, `{"identityProviderId":"nintendo","accountIds":["5db9c2b2ba1353a0"]}`, nil)
+		if rec.Code != 200 || !strings.Contains(rec.Body.String(), c.want) {
+			t.Errorf("%s %s: %d %s", c.method, c.path, rec.Code, rec.Body)
+		}
 	}
 }

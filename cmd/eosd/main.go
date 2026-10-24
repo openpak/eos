@@ -120,6 +120,9 @@ func (s *server) route(w http.ResponseWriter, r *http.Request) bool {
 		w.WriteHeader(http.StatusNoContent)
 		return false // too frequent to log
 	default:
+		if s.epicSocial(w, r) {
+			return true
+		}
 		s.unhandled(w, r)
 		return false
 	}
