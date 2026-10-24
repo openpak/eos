@@ -67,6 +67,23 @@ type social struct {
 	requests map[string]map[string]bool // recipient -> senders
 	blocks   map[string]map[string]bool // blocker -> blocked
 	invites  map[string][]lobbyInvite   // recipient -> invites
+	deleting map[string]bool            // PUIDs with a pending account deletion
+}
+
+func (g *social) isDeleting(puid string) bool {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	return g.deleting[puid]
+}
+
+func (g *social) setDeleting(puid string, on bool) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if on {
+		g.deleting[puid] = true
+	} else {
+		delete(g.deleting, puid)
+	}
 }
 
 type lobbyInvite struct {
@@ -77,7 +94,7 @@ type lobbyInvite struct {
 func newSocial() *social {
 	return &social{byCode: map[string]string{}, friends: map[string]map[string]bool{},
 		requests: map[string]map[string]bool{}, blocks: map[string]map[string]bool{},
-		invites: map[string][]lobbyInvite{}}
+		invites: map[string][]lobbyInvite{}, deleting: map[string]bool{}}
 }
 
 func addTo(m map[string]map[string]bool, k, v string) {
@@ -154,9 +171,26 @@ func (s *server) innersloth(w http.ResponseWriter, r *http.Request) {
 		// is not built; the reason is a fixed vocabulary (InnerNet.ReportReasons), safe to log.
 		log.Printf("[innersloth] report-player reason=%s", attr(body, "reason_id"))
 		out = data("report", map[string]any{})
+	case path == "user/accounts/deletion" && r.Method == http.MethodGet:
+		// The deletion STATUS: the client reads any 200 as "Account Deletion Pending" (measured
+		// 2026-10-24, Harbor), so a player with no request gets 404.
+		if !g.isDeleting(puid) {
+			status = 404
+			out = map[string]any{"errors": []any{map[string]any{"code": "404", "title": "Not Found"}}}
+			break
+		}
+		out = data("account_deletion", map[string]any{})
+	case path == "user/accounts/deletion" && r.Method == http.MethodDelete:
+		// Cancelling a pending deletion.
+		g.setDeleting(puid, false)
+		out = data("account_deletion", map[string]any{})
 	case path == "user/accounts/deletion":
 		g.forget(puid)
+		g.setDeleting(puid, true)
 		out = data("account_deletion", map[string]any{})
+	case path == "announcements" && r.Method == http.MethodGet:
+		// AnnouncementList {announcements, page, pages}. No in-game news on OpenPak yet.
+		out = data("announcements", map[string]any{"announcements": []any{}, "page": 1, "pages": 1})
 	case path == "user/redeem-currency" && r.Method == http.MethodPost:
 		// RedeemCurrency {item_id, currency_type, platform} -> ResponsePurchase. No wallet is kept
 		// here yet: the item is granted at no cost.

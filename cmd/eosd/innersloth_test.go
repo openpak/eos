@@ -74,7 +74,18 @@ func TestInnerslothShapes(t *testing.T) {
 	}
 	call(tokA, "POST", "user/report-player", `{"data":{"type":"report","attributes":{"game_server_id":1,"game_id":2,"reportee_client_id":3,"reason_id":1}}}`)
 
+	if rec := do(s, "GET", "https://backend.innersloth.com/api/user/accounts/deletion", "", map[string]string{"Authorization": "Bearer " + tokA}); rec.Code != 404 {
+		t.Fatalf("deletion status with no request: %d, want 404", rec.Code)
+	}
+	if got := call(tokA, "GET", "announcements?console=8&id=0&lang=0", ""); got["pages"] != float64(1) {
+		t.Fatalf("announcements: %v", got)
+	}
+	call(tokA, "POST", "user/accounts/deletion", "")
+	call(tokA, "GET", "user/accounts/deletion", "")
 	call(tokA, "DELETE", "user/accounts/deletion", "")
+	if rec := do(s, "GET", "https://backend.innersloth.com/api/user/accounts/deletion", "", map[string]string{"Authorization": "Bearer " + tokA}); rec.Code != 404 {
+		t.Fatalf("deletion status after cancel: %d, want 404", rec.Code)
+	}
 	if got := call(tokB, "GET", "user/blocks", "")["blocked_by"].([]any); len(got) != 0 {
 		t.Fatalf("deleted account still blocks: %v", got)
 	}
