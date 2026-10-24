@@ -8,8 +8,10 @@ import (
 
 func epicLogin(t *testing.T, s *server) map[string]any {
 	t.Helper()
-	body, hdr := form(url.Values{"grant_type": {"external_auth"}, "external_auth_type": {"nintendo_nsa_id_token"},
-		"external_auth_token": {"eyJhbGciOi.eyJzdWIi.c2ln"}})
+	// The type name is what Fall Guys' SDK sends (measured on Harbor).
+	body, hdr := form(url.Values{"grant_type": {"external_auth"}, "external_auth_type": {"nsa_id_token"},
+		"external_auth_token": {"eyJhbGciOi.eyJzdWIi.c2ln"}, "deployment_id": {"0123456789abcdef0123456789abcdef"},
+		"scope": {"basic_profile"}})
 	rec := do(s, "POST", "https://api.epicgames.dev/epic/oauth/v2/token", body, hdr)
 	if rec.Code != 200 {
 		t.Fatalf("epic login: %d %s", rec.Code, rec.Body)

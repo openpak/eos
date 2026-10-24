@@ -34,6 +34,7 @@ const (
 var nintendoTypes = map[string]bool{
 	"nintendo_nsa_id_token": true,
 	"nintendo_id_token":     true,
+	"nsa_id_token":          true, // EOS Auth's name for it (Fall Guys, SDK 1.17)
 }
 
 func (s *server) token(w http.ResponseWriter, r *http.Request) {
