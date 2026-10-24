@@ -97,6 +97,12 @@ func (s *server) route(w http.ResponseWriter, r *http.Request) bool {
 		s.token(w, r)
 	case p == "/auth/v1/oauth/jwks" || p == "/auth/v1/oauth/.well-known/jwks.json":
 		writeJSON(w, 200, s.signer.jwks())
+	case p == "/epic/oauth/v2/token":
+		s.epicToken(w, r)
+	case p == "/epic/oauth/v2/tokenInfo":
+		s.epicTokenInfo(w, r)
+	case p == "/epic/oauth/v2/.well-known/jwks.json":
+		writeJSON(w, 200, s.signer.jwks())
 	case p == "/auth/v1/accounts/deviceid":
 		s.createDeviceID(w, r)
 	case strings.HasPrefix(p, "/kws/"):

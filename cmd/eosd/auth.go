@@ -111,6 +111,14 @@ func (s *server) connectLogin(w http.ResponseWriter, r *http.Request, clientID, 
 			return
 		}
 		account = "baas:" + p.BaasUserID
+	case extType == "epicgames_access_token" || extType == "epicgames_id_token":
+		// Connect on top of EOS Auth: the Epic account token epicauth.go issued.
+		c, err := s.signer.verify(ext)
+		if err != nil || (c["t"] != "epic" && c["t"] != "epic_id") {
+			writeError(w, 401, "errors.com.epicgames.eos.auth.invalid_external_token", "external token not valid")
+			return
+		}
+		account = "epic:" + str(c, "sub")
 	case extType == "deviceid_access_token":
 		c, err := s.signer.verify(ext)
 		if err != nil || c["t"] != "device" {

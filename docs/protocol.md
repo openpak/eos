@@ -143,5 +143,12 @@ a player in a title across logins and restarts and different between titles.
 - **TMNT**: not reached; the game faults inside its EOS module on Harbor before any request
   ([`tmnt-shredders-revenge.md`](tmnt-shredders-revenge.md)). Lobbies plus P2P expected
   (SPECULATIVE).
-- **Fall Guys**: Connect only, then Catapult and Epic-hosted match servers
-  ([`fall-guys.md`](fall-guys.md)).
+- **Fall Guys**: EOS Auth as well as Connect. Its Catapult login carries an Epic account user
+  token (`EOS_Auth_CopyUserAuthToken`), so the SDK asks for an Epic account first
+  (HIGH, from the client's code; the request itself is not measured yet). The SDK names
+  `/epic/oauth/v2/token`, `/epic/oauth/v2/tokenInfo` and `/epic/oauth/v2/.well-known/jwks.json`
+  under the `EOSAuthService` base, and the external types `nintendo_nsa_id_token` and
+  `nintendo_id_token`. eosd answers the token grant with an account straight away (a
+  "headless" account, no continuation). Connect accepts that account's access or id token as
+  `epicgames_access_token` / `epicgames_id_token`. Then Catapult and the match servers
+  (`platforms/switch/games/fall-guys`).
