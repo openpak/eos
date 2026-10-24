@@ -86,6 +86,10 @@ func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // route dispatches one request; false means it went to the catch-all, which logs on its own.
 func (s *server) route(w http.ResponseWriter, r *http.Request) bool {
 	p := r.URL.Path
+	if kind := socketKind(p); kind != "" {
+		s.socket(w, r, kind)
+		return true
+	}
 	switch {
 	case strings.HasPrefix(p, "/sdk/v1/"):
 		s.sdkConfig(w, r)
@@ -115,6 +119,9 @@ func (s *server) unhandled(w http.ResponseWriter, r *http.Request) {
 	body, _ := io.ReadAll(io.LimitReader(r.Body, 1<<16))
 	log.Printf("[eos] !! unhandled %s %s %s%s headers=%s body=%s", r.Method, r.Host, logPath(r.URL.Path),
 		logQuery(r.URL.RawQuery), headerNames(r.Header), bodyShape(r.Header.Get("Content-Type"), body))
+	if trace {
+		log.Printf("[eos] !! unhandled body %s", body)
+	}
 	writeError(w, 404, "errors.com.epicgames.common.not_found", "not found")
 }
 
