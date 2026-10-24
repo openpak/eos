@@ -64,12 +64,14 @@ type server struct {
 	signer *signer
 	secret []byte
 	social *social
+	// lobbies: the lobbies the lobby socket created, which searches read.
+	lobbies *lobbyStore
 	// epicNames: Epic account id -> console nickname, learned at EOS Auth login.
 	epicNames sync.Map
 }
 
 func newServer(ids identityClient, sg *signer, secret []byte) *server {
-	return &server{ids: ids, signer: sg, secret: secret, social: newSocial()}
+	return &server{ids: ids, signer: sg, secret: secret, social: newSocial(), lobbies: newLobbyStore()}
 }
 
 func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -112,6 +114,7 @@ func (s *server) route(w http.ResponseWriter, r *http.Request) bool {
 		writeJSON(w, 200, s.signer.jwks())
 	case p == "/auth/v1/accounts/deviceid":
 		s.createDeviceID(w, r)
+	case strings.HasPrefix(p, "/lobby/v1/") && s.lobbyREST(w, r):
 	case strings.HasPrefix(p, "/kws/"):
 		s.kws(w, r)
 	case strings.HasPrefix(p, "/telemetry/") || strings.HasPrefix(p, "/datarouter/"):

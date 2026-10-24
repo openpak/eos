@@ -140,9 +140,21 @@ a player in a title across logins and restarts and different between titles.
 - **Among Us**: KWS (above), then its own account backend `backend.innersloth.com`, not an EOS
   service; [`among-us.md`](among-us.md). Its matchmaker and game server are Impostor
   (`platforms/switch/games/among-us`).
-- **TMNT**: not reached; the game faults inside its EOS module on Harbor before any request
-  ([`tmnt-shredders-revenge.md`](tmnt-shredders-revenge.md)). Lobbies plus P2P expected
-  (SPECULATIVE).
+- **TMNT**: Connect login on the NSA id_token (real console, 2026-10-24), then the co-op search
+  `POST /lobby/v1/{deployment}/lobbies/filter` with
+  `{"criteria":[{"key","op","value"}...],"maxResults":5}`: keys `bucket` and
+  `attributes.<name>_<type>` (`VERSION_l`, `ONLINEGAMEPRESENCE_l`, `GAMETYPE_l`, `SLOTS_l`), ops
+  `EQUAL`, `NOT_EQUAL`, `GREATER_THAN_OR_EQUAL`, `CONTAINS`, about every 3 s. The reply is
+  `{"sessions":[...],"count":n}`, each session
+  `{deployment, id, bucket, settings{maxPublicPlayers, allowInvites, shouldAdvertise, allowReadById,
+  allowJoinViaPresence, allowJoinInProgress, allowConferenceRoom, allowMigration,
+  rejoinAfterKick: "open"|"invite_only"}, totalPlayers, openPublicPlayers, publicPlayers, started,
+  lastUpdated, attributes, owner}` (HIGH, from the SDK's parser; one malformed session drops the
+  whole reply). eosd answers it from an in-memory store (`lobby.go`), so far always empty.
+  Creating a party sent nothing at all: lobbies are created over the lobby websocket
+  (`{"name","requestId","payload"}` messages), which the console never opened. Leaderboards are
+  NEX (`switch-nex`, game server `20A95200`)
+  ([`tmnt-shredders-revenge.md`](tmnt-shredders-revenge.md)).
 - **Fall Guys**: EOS Auth as well as Connect. Its Catapult login carries an Epic account user
   token (`EOS_Auth_CopyUserAuthToken`), so the SDK asks for an Epic account first
   (HIGH, from the client's code; the request itself is not measured yet). The SDK names

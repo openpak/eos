@@ -31,3 +31,5 @@ folder (`~/REPOS/Openpak/scratch/`), never in this repository.
 | Among Us permission keys, `backend.innersloth.com` paths and JSON names, `ResponseFriendCode` fields | Among Us's IL2CPP `global-metadata.dat` (string literals, `[JsonProperty]` arguments, type and field names via `scratch/eos/tools/meta_types.py`) |
 | backend.innersloth.com resolved to the real Innersloth; FriendCodeFail; ONLINE greyed | Harbor `eos-host` log (`sfdnsres`) and screenshots, 2026-10-10 |
 | TMNT fault inside the EOS `.nrs` on Harbor | Harbor `eos-host` log and thread dump, 2026-10-10, twice |
+| TMNT lobby search request and Connect login on a retail console | `openpak-eos` log on prod with `EOS_TRACE=1`, 2026-10-24 11:19-11:27 UTC (the owner's own console) |
+| Lobby search reply shape (`sessions`, `count`, session and settings field names, `rejoinAfterKick` values) | TMNT's own `EOSSDK-Switch-Shipping.nro`, decompiled in scratch (`scratch/re/tmnt/`): the search-reply and lobby-object parsers; names only, no code |
