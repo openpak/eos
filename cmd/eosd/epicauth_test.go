@@ -46,6 +46,14 @@ func TestEpicAuthLoginRefreshAndConnect(t *testing.T) {
 		t.Fatalf("tokenInfo: %s", rec.Body)
 	}
 
+	// The SDK's user info query names the console nickname.
+	rec = do(s, "GET", "https://api.epicgames.dev/epic/id/v2/sdk/accounts?accountId="+acct, "", map[string]string{"Authorization": "bearer " + a["access_token"].(string)})
+	var accts []map[string]any
+	_ = json.Unmarshal(rec.Body.Bytes(), &accts)
+	if rec.Code != 200 || len(accts) != 1 || accts[0]["displayName"] != "Zorblaxa" || accts[0]["accountId"] != acct {
+		t.Fatalf("sdk accounts: %d %s", rec.Code, rec.Body)
+	}
+
 	// refresh keeps the account
 	body, hdr := form(url.Values{"grant_type": {"refresh_token"}, "refresh_token": {a["refresh_token"].(string)}})
 	rec = do(s, "POST", "https://api.epicgames.dev/epic/oauth/v2/token", body, hdr)

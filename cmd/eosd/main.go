@@ -20,6 +20,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -63,6 +64,8 @@ type server struct {
 	signer *signer
 	secret []byte
 	social *social
+	// epicNames: Epic account id -> console nickname, learned at EOS Auth login.
+	epicNames sync.Map
 }
 
 func newServer(ids identityClient, sg *signer, secret []byte) *server {
@@ -99,6 +102,10 @@ func (s *server) route(w http.ResponseWriter, r *http.Request) bool {
 		writeJSON(w, 200, s.signer.jwks())
 	case p == "/epic/oauth/v2/token":
 		s.epicToken(w, r)
+	case p == "/epic/id/v2/sdk/accounts":
+		s.epicAccounts(w, r)
+	case p == "/epic/oauth/v2/revoke":
+		s.epicRevoke(w, r)
 	case p == "/epic/oauth/v2/tokenInfo":
 		s.epicTokenInfo(w, r)
 	case p == "/epic/oauth/v2/.well-known/jwks.json":

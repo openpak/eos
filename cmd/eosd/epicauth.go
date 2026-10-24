@@ -19,6 +19,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
+	"io"
 	"log"
 	"net/http"
 	"strings"
@@ -65,6 +66,7 @@ func (s *server) epicToken(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		baasID = p.BaasUserID
+		s.epicNames.Store(s.epicAccountID(baasID), p.Nickname)
 	case "refresh_token":
 		c, err := s.signer.verify(r.PostForm.Get("refresh_token"))
 		if err != nil || c["t"] != "epic_refresh" {
@@ -162,4 +164,37 @@ func (s *server) epicAuth(w http.ResponseWriter, r *http.Request) {
 	default:
 		s.unhandled(w, r)
 	}
+}
+
+// GET /epic/id/v2/sdk/accounts?accountId=<id>[&accountId=...]: what the SDK shows for an Epic
+// account (EOS_UserInfo). The SDK asks right after login and gives up the login without it.
+// Display names are the console nicknames seen at login on this server.
+func (s *server) epicAccounts(w http.ResponseWriter, r *http.Request) {
+	if _, err := s.bearerClaims(r); err != nil {
+		writeError(w, 401, "errors.com.epicgames.common.authentication.authentication_failed", "not signed in")
+		return
+	}
+	out := []map[string]any{}
+	for _, id := range r.URL.Query()["accountId"] {
+		name, _ := s.epicNames.Load(id)
+		dn, _ := name.(string)
+		out = append(out, map[string]any{
+			"accountId": id, "displayName": dn, "preferredLanguage": "en", "linkedAccounts": []any{},
+		})
+	}
+	writeJSON(w, 200, out)
+}
+
+// POST /epic/oauth/v2/revoke: tokens here expire on their own; accept and forget.
+func (s *server) epicRevoke(w http.ResponseWriter, r *http.Request) {
+	_, _ = io.Copy(io.Discard, io.LimitReader(r.Body, 1<<16))
+	w.WriteHeader(http.StatusOK)
+}
+
+func (s *server) bearerClaims(r *http.Request) (map[string]any, error) {
+	tok, err := bearer(r.Header.Get("Authorization"))
+	if err != nil {
+		return nil, err
+	}
+	return s.signer.verify(tok)
 }
