@@ -70,7 +70,8 @@ type social struct {
 }
 
 type lobbyInvite struct {
-	Sender, Recipient, Room string
+	Sender, Recipient string
+	Room              json.RawMessage // room_code exactly as the sender's client wrote it
 }
 
 func newSocial() *social {
@@ -143,11 +144,31 @@ func (s *server) innersloth(w http.ResponseWriter, r *http.Request) {
 	case path == "user/lobby/invites" && r.Method == http.MethodGet:
 		out = data("lobby_invites", g.invitesDoc(puid))
 	case path == "user/lobby/invites" && r.Method == http.MethodPost:
-		g.invite(puid, attr(body, "recipient_puid"), attr(body, "room_code"))
+		g.invite(puid, attr(body, "recipient_puid"), attrRaw(body, "room_code"))
 		out = data("lobby_invites", map[string]any{})
 	case path == "user/lobby/invites" && r.Method == http.MethodDelete:
 		g.dropInvite(puid, q.Get("sender_puid"))
 		out = data("lobby_invites", map[string]any{})
+	case path == "user/report-player" && r.Method == http.MethodPost:
+		// PlayerReportRequest {game_server_id, game_id, reportee_client_id, reason_id}. Moderation
+		// is not built; the reason is a fixed vocabulary (InnerNet.ReportReasons), safe to log.
+		log.Printf("[innersloth] report-player reason=%s", attr(body, "reason_id"))
+		out = data("report", map[string]any{})
+	case path == "user/accounts/deletion":
+		g.forget(puid)
+		out = data("account_deletion", map[string]any{})
+	case path == "user/redeem-currency" && r.Method == http.MethodPost:
+		// RedeemCurrency {item_id, currency_type, platform} -> ResponsePurchase. No wallet is kept
+		// here yet: the item is granted at no cost.
+		out = data("purchase", map[string]any{"item_id": attrRaw(body, "item_id"),
+			"currency_type": attrRaw(body, "currency_type"), "platform": attrRaw(body, "platform"), "item_cost": 0})
+	case (path == "user/validate-receipt" || path == "user/validate-receipt-batch") && r.Method == http.MethodPost:
+		// ValidateReceipt {entitlement_type, receipt: {items}}; on Switch the receipt is the
+		// console's own DLC list (SwitchOnDiskDLCReceipt). The console already checked ownership,
+		// so the receipt is accepted as sent. Reply shape unmeasured: echo the request's attributes.
+		log.Printf("[innersloth] %s entitlement_type=%s body=%s", path, attr(body, "entitlement_type"),
+			bodyShape(r.Header.Get("Content-Type"), body))
+		out = data("receipt", attrsOf(body))
 	default:
 		log.Printf("[innersloth] !! unhandled %s %s%s headers=%s body=%s", r.Method, logPath(r.URL.Path),
 			logQuery(r.URL.RawQuery), headerNames(r.Header), bodyShape(r.Header.Get("Content-Type"), body))
@@ -167,23 +188,42 @@ func (s *server) usernameDoc(puid string) map[string]any {
 	return data("user", map[string]any{"username": n, "discriminator": d})
 }
 
-// attr reads data.attributes.<key> (or a top-level <key>) from a request body.
-func attr(body []byte, key string) string {
+// attrsOf returns a request body's data.attributes, or the body itself when it is not JSON:API.
+func attrsOf(body []byte) map[string]json.RawMessage {
 	var in struct {
 		Data struct {
-			Attributes map[string]any `json:"attributes"`
+			Attributes map[string]json.RawMessage `json:"attributes"`
 		} `json:"data"`
 	}
-	if json.Unmarshal(body, &in) == nil {
-		if v, ok := in.Data.Attributes[key].(string); ok {
-			return v
-		}
+	if json.Unmarshal(body, &in) == nil && in.Data.Attributes != nil {
+		return in.Data.Attributes
 	}
-	var flat map[string]any
-	if json.Unmarshal(body, &flat) == nil {
-		if v, ok := flat[key].(string); ok {
-			return v
-		}
+	var flat map[string]json.RawMessage
+	if json.Unmarshal(body, &flat) == nil && flat != nil {
+		return flat
+	}
+	return map[string]json.RawMessage{}
+}
+
+// attrRaw reads data.attributes.<key> (or a top-level <key>) as raw JSON, null when absent.
+func attrRaw(body []byte, key string) json.RawMessage {
+	if v, ok := attrsOf(body)[key]; ok {
+		return v
+	}
+	return json.RawMessage("null")
+}
+
+// attr reads data.attributes.<key> (or a top-level <key>) as text: a string unquoted, a
+// number as written, "" for anything else.
+func attr(body []byte, key string) string {
+	v := attrRaw(body, key)
+	var s string
+	if json.Unmarshal(v, &s) == nil {
+		return s
+	}
+	var n json.Number
+	if json.Unmarshal(v, &n) == nil {
+		return n.String()
 	}
 	return ""
 }
@@ -202,25 +242,7 @@ func (g *social) friendsDoc(puid string) map[string]any {
 	for f := range g.friends[puid] {
 		friends = append(friends, map[string]any{"friend_puid": f, "friend_friendcode": fullCode(f)})
 	}
-	return map[string]any{"friends": friends, "blocked_by": g.blockedBy(puid), "blocking": keys(g.blocks[puid])}
-}
-
-func (g *social) blockedBy(puid string) []string {
-	out := []string{}
-	for b, set := range g.blocks {
-		if set[puid] {
-			out = append(out, b)
-		}
-	}
-	return out
-}
-
-func keys(m map[string]bool) []string {
-	out := []string{}
-	for k := range m {
-		out = append(out, k)
-	}
-	return out
+	return map[string]any{"friends": friends}
 }
 
 func (g *social) requestsDoc(puid string) map[string]any {
@@ -234,7 +256,7 @@ func (g *social) requestsDoc(puid string) map[string]any {
 }
 
 func (g *social) requestByCode(puid string, body []byte) (int, any) {
-	code := strings.ToLower(firstNonEmpty(attr(body, "recipient_friendcode"), attr(body, "friendcode")))
+	code := strings.ToLower(firstNonEmpty(attr(body, "recipient_friendcode"), attr(body, "username")))
 	g.mu.Lock()
 	to, ok := g.byCode[code]
 	g.mu.Unlock()
@@ -287,7 +309,42 @@ func (g *social) unfriend(puid, other string) {
 func (g *social) blocksDoc(puid string) map[string]any {
 	g.mu.Lock()
 	defer g.mu.Unlock()
-	return map[string]any{"blocking": keys(g.blocks[puid]), "blocked_by": g.blockedBy(puid)}
+	// ResponseBlockedWrapper: blocking holds {recipient_puid, recipient_friendcode},
+	// blocked_by holds {sender_puid, sender_friendcode}.
+	blocking, blockedBy := []any{}, []any{}
+	for b := range g.blocks[puid] {
+		blocking = append(blocking, map[string]any{"recipient_puid": b, "recipient_friendcode": fullCode(b)})
+	}
+	for b, set := range g.blocks {
+		if set[puid] {
+			blockedBy = append(blockedBy, map[string]any{"sender_puid": b, "sender_friendcode": fullCode(b)})
+		}
+	}
+	return map[string]any{"blocking": blocking, "blocked_by": blockedBy}
+}
+
+// forget drops everything kept about a player (user/accounts/deletion). The friend code is
+// derived from the PUID, so there is nothing else to delete.
+func (g *social) forget(puid string) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	delete(g.byCode, strings.ToLower(fullCode(puid)))
+	for _, m := range []map[string]map[string]bool{g.friends, g.requests, g.blocks} {
+		delete(m, puid)
+		for _, set := range m {
+			delete(set, puid)
+		}
+	}
+	delete(g.invites, puid)
+	for to, list := range g.invites {
+		kept := list[:0:0]
+		for _, i := range list {
+			if i.Sender != puid {
+				kept = append(kept, i)
+			}
+		}
+		g.invites[to] = kept
+	}
 }
 
 func (g *social) block(puid, other string) {
@@ -316,8 +373,8 @@ func (g *social) invitesDoc(puid string) map[string]any {
 	return map[string]any{"next_poll_seconds": 15, "invites": inv}
 }
 
-func (g *social) invite(from, to, room string) {
-	if to == "" || room == "" {
+func (g *social) invite(from, to string, room json.RawMessage) {
+	if to == "" || string(room) == "null" || string(room) == `""` {
 		return
 	}
 	g.mu.Lock()
