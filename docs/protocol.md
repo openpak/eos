@@ -164,3 +164,17 @@ a player in a title across logins and restarts and different between titles.
   "headless" account, no continuation). Connect accepts that account's access or id token as
   `epicgames_access_token` / `epicgames_id_token`. Then Catapult and the match servers
   (`platforms/switch/games/fall-guys`).
+
+## From the previous README
+
+### Endpoints
+
+| Path | What |
+| --- | --- |
+| `GET /sdk/v1/default`, `/sdk/v1/product/<id>` | the SDK config document, hand-written, every service at `api.epicgames.dev` |
+| `POST /auth/v1/oauth/token` | `client_credentials`; `external_auth` with `nintendo_nsa_id_token` / `nintendo_id_token` (verified by nx-baas) or `deviceid_access_token` |
+| `POST /auth/v1/accounts/deviceid`, `GET /auth/v1/oauth/jwks` | device ids; the token signing keys |
+| `/kws/v1/...` | age gate info and permissions (every player an adult, the title's keys granted) |
+| `/telemetry/...` | analytics, dropped |
+| host `backend.innersloth.com`, `/api/user/...` | Among Us's account backend: friend code, friends, requests, blocks, lobby invites |
+| anything else | `!! unhandled` with method, path (ids tagged), header names and body shape, 404 |
