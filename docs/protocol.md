@@ -1,6 +1,6 @@
 # Epic Online Services on Switch: protocol notes
 
-> **Current Switch client (2026-10-13): Harbor**, at
+> **Current Switch client: Harbor**, at
 > `~/REPOS/Openpak/emulators/harbor`. Harbor is an independent
 > OpenPak project based on Eden. Citron, Ryujinx (desktop and Android), and
 > the former OpenPak Eden checkouts have been removed. References to those
@@ -100,8 +100,7 @@ credentials, for any platform id, with a JSON document of about 20 KB (CONFIRMED
   Serving our own document lets us point every one of those at OpenPak without touching
   DNS for the extra names (HIGH: the SDK reads `BaseUrl`; whether *every* client honours it
   is untested).
-- Which subset of the document the SDK needs to proceed is unknown (open question 1 in
-  `next-session.md`). The clean-room answer is a hand-written document with the fields the
+- Which subset of the document the SDK needs to proceed is unknown. The clean-room answer is a hand-written document with the fields the
   SDK is shown to read, not the captured one.
 
 ## 5. Boot sequence of SDK 1.16 (CONFIRMED, Among Us on Harbor, 2026-10-10)

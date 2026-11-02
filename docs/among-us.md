@@ -18,7 +18,7 @@ firmware 23.0.1, build `64949c8e1d`), run directory `eos-host`, test account ema
    (`104.20.x.x`), which refuses an OpenPak EOS token. Waiting on the owner's ceiling signature
    (`.innersloth.com`).
 4. `matchmaker.among.us /api/user`, `/api/games`, then UDP to Impostor: `platforms/switch/games/among-us`,
-   live since 2026-09-11, never reached yet.
+   served by that repository.
 
 ## The Innersloth backend as eosd answers it
 

@@ -1,6 +1,6 @@
 # Notes: eos
 
-> **Current Switch client (2026-10-13): Harbor**, at
+> **Current Switch client: Harbor**, at
 > `~/REPOS/Openpak/emulators/harbor`. Harbor is an independent
 > OpenPak project based on Eden. Citron, Ryujinx (desktop and Android), and
 > the former OpenPak Eden checkouts have been removed. References to those
@@ -13,13 +13,13 @@ the EOS SDK inside a game dials once the console's DNS points at OpenPak. One re
 the network, like [`servers/demonware`](../../demonware) and [`servers/photon`](../../photon), with
 titles as records under `docs/`.
 
-## Status: deployed 2026-10-10 (`openpak-eos`), Among Us signs in to EOS
+## Titles
 
-| Title | Status |
+| Title | Notes |
 | --- | --- |
-| Among Us | EOS sign-in served end to end on Harbor (config, client token, Connect login on the NSA id_token, KWS). Next stop is its own account backend `backend.innersloth.com`, which eosd answers but the signed ceiling does not redirect yet ([`among-us.md`](among-us.md)) |
-| TMNT: Shredder's Revenge | faults inside its EOS module on Harbor before any request (a Harbor issue); reached the config request on Ryujinx ([`tmnt-shredders-revenge.md`](tmnt-shredders-revenge.md)) |
-| Fall Guys | identity layer is this repository's problem now; the game stays not feasible because its rounds run on Epic-hosted servers ([`fall-guys.md`](fall-guys.md)) |
+| Among Us | EOS config, client token, Connect login on the NSA id_token, KWS ([`among-us.md`](among-us.md)) |
+| TMNT: Shredder's Revenge | its EOS module and first requests ([`tmnt-shredders-revenge.md`](tmnt-shredders-revenge.md)) |
+| Fall Guys | the identity layer is this repository's problem; the game itself is not feasible because its rounds run on Epic-hosted servers ([`fall-guys.md`](fall-guys.md)) |
 
 This repository supersedes [`servers/fall-guys`](../../fall-guys), whose study and evidence
 plan are carried in [`fall-guys.md`](fall-guys.md) and
