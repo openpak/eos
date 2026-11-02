@@ -1,7 +1,7 @@
 # Evidence: eos
 
 What is known so far is in [`protocol.md`](protocol.md), with sources in
-[`provenance.md`](provenance.md). The short version:
+the Sources section of protocol.md. The short version:
 
 - The SDK resolves one name, `api.epicgames.dev`, and trusts the console CA store. An
   OpenPak-CA certificate on that name is accepted.

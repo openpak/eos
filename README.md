@@ -38,14 +38,13 @@ go run ./cmd/eosd
 ## Docs
 
 - [protocol.md](docs/protocol.md): endpoints, wire formats and the SDK boot sequence
-- [evidence.md](docs/evidence.md): what is confirmed, what is assumed, evidence still needed
 - [deploy.md](docs/deploy.md): ports, configuration, image and run detail
-- [notes.md](docs/notes.md): design rationale, history, status and ground rules
 - [among-us.md](docs/among-us.md): Among Us
 - [tmnt-shredders-revenge.md](docs/tmnt-shredders-revenge.md): Teenage Mutant Ninja Turtles: Shredder's Revenge
 - [fall-guys.md](docs/fall-guys.md): Fall Guys
 - [fall-guys-evidence.md](docs/fall-guys-evidence.md): Fall Guys evidence plan
-- [provenance.md](docs/provenance.md): where each non-obvious fact came from
+
+PRDs: openpak/prds (private)
 
 ## Licence
 

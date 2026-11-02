@@ -9,8 +9,8 @@
 > current handoff for builds and testing; old results do not establish Harbor parity.
 
 The facts an OpenPak EOS backend is built from, written down before any code. Every entry
-says what the shipped EOS SDK sends or expects; [`provenance.md`](provenance.md) says where
-each fact came from. Nothing here describes another implementation's code.
+says what the shipped EOS SDK sends or expects; the Sources section at the end says where
+the facts came from. Nothing here describes another implementation's code.
 
 Confidence labels follow the workspace conventions: CONFIRMED (measured on our own run),
 HIGH, MEDIUM, LOW, SPECULATIVE.
@@ -72,7 +72,7 @@ reports `ConnectClientAuthTask Failed due to network disabled` and never dials o
 
 `GET /sdk/v1/default?platformId=<id>` is public: the real service answers it without
 credentials, for any platform id, with a JSON document of about 20 KB (CONFIRMED,
-2026-09-24; a copy is in scratch, see provenance). Its shape:
+2026-09-24; a copy is kept in scratch, not committed). Its shape:
 
 - Three top-level keys: `client`, `services`, `watermark`.
 - `client` holds about a hundred sections. Most are `RateLimiter.<Client>[.Operations]`
@@ -177,3 +177,48 @@ a player in a title across logins and restarts and different between titles.
 | `/telemetry/...` | analytics, dropped |
 | host `backend.innersloth.com`, `/api/user/...` | Among Us's account backend: friend code, friends, requests, blocks, lobby invites |
 | anything else | `!! unhandled` with method, path (ids tagged), header names and body shape, 404 |
+
+## Sources and design notes
+
+Clean room (see the [clean-room policy](https://docs.openpak.org/contributors/clean-room/)); raw
+material stays in the workspace scratch folder, never in this repository. The captured SDK
+config document is a fact source, not a file to ship: the served document is written by hand
+from the fields the SDK is shown to read. Logs carry shapes, never tokens, PUIDs, names or
+bodies (`logging.go`, `TestLogsCarryNoPersonalData`).
+
+Identity: this repository supersedes the `fall-guys` study, whose verdict "Epic verifies the
+Nintendo token upstream, so an OpenPak token can never pass" held while Epic was the backend.
+With OpenPak answering `api.epicgames.dev` and minting the NSA id_token, the backend verifies
+its own token, as `demonware` does through nx-baas. The Fall Guys match-server verdict is
+untouched ([`fall-guys.md`](fall-guys.md)).
+
+Where facts came from:
+
+- TMNT title id, version, DLC ids, SDK version, User-Agent and header shapes, the single name
+  `api.epicgames.dev`, SNI, verify options, ALPN, session cache and four parallel connections:
+  OpenPak's own emulator logs (2026-09-24) and the game's own `ServiceLm` lines. `nifm` answered
+  but no socket opened on the first run; the crash at teardown is in
+  [`tmnt-shredders-revenge.md`](tmnt-shredders-revenge.md).
+- Request path, query, `Authorization` constant, retry cadence, telemetry posts and `404 {}`
+  behaviour: the nx-baas container log on prod (2026-09-24), which received the traffic as an
+  unrouted SNI and answered from its catch-all.
+- The SDK config endpoint is public (own `curl` of `/sdk/v1/default?platformId=SWT`, HTTP 200,
+  no credentials, 2026-09-24). The same first call is made on every platform and a blocked
+  SDK config fails EOS init (public reports, `platformId=WIN`).
+- Connect Web API token request shape and `external_auth_type` values: Epic's public
+  documentation. REST surface of Auth, Connect, Achievements, Stats, Leaderboards, Player and
+  Title Storage, Sanctions, Ecom: third-party OpenAPI profiles (documentation only).
+- Device-auth OAuth endpoints: OpenPak's own Fall Guys research harness, which hand-declares
+  the C SDK structs; nothing copied.
+- Prior art: the only EOS emulator is client-side (PC) and was not read for code; nobody
+  should look for a server there.
+- `.epicgames.dev` family in the netprofile; nx-baas on-demand certificates for unrouted SNI.
+- SDK 1.16 boot sequence (section 5): `openpak-eos` log on prod (shapes only) and Harbor runs,
+  2026-10-10. KWS JSON field names and status words come from strings in Among Us's own
+  `EOSSDK-Switch-Shipping.nro`; Among Us permission keys, `backend.innersloth.com` paths and
+  JSON names, and `ResponseFriendCode` fields from its IL2CPP `global-metadata.dat`.
+- backend.innersloth.com resolved to the real Innersloth (FriendCodeFail, ONLINE greyed) and a
+  TMNT fault inside the EOS `.nrs` on Harbor: Harbor logs and thread dump, 2026-10-10.
+- TMNT lobby search request and Connect login on a retail console: `openpak-eos` log on prod
+  with `EOS_TRACE=1`, 2026-10-24. Lobby search reply shape (`sessions`, `count`, session and
+  settings field names, `rejoinAfterKick` values): names only, from TMNT's own EOS SDK module.
