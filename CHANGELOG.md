@@ -2,6 +2,10 @@
 
 `git log` stays the source of truth; this file is the readable summary.
 
+## v0.2.0 — 2026-11-02
+
+- Release from main; replaces the hand-built production image.
+
 ## v0.1.0 (2026-10-10)
 
 - eosd: first code. SDK config document (default and per-product), OAuth token endpoint
