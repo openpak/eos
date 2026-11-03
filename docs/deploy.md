@@ -8,11 +8,16 @@ OpenPak-CA leaf (`klei-http1` ALPN pin), like `platforms/switch/games/klei`.
 
 Configuration: `EOS_ID_SECRET` (PUID derivation, must never change), `EOS_SIGNING_KEY_FILE`
 (RSA PEM), `NX_INTERNAL_URL` + `NX_INTERNAL_KEY` (nx-baas). PUIDs and friend codes
-are derived; the friends graph is in memory.
+are derived. Friends, friend requests and blocks are not stored here: they are the account core's Social
+service (`ACCOUNT_GRPC_ADDR`, `ACCOUNT_INTERNAL_KEY`; without them the friends list is empty and requests
+answer 503). A player needs a Switch link in the core (their BAAS user id) to have friends.
+`blocked_by` is always empty, because the core never says who blocked you.
 
 `EOS_DATABASE_URL` (Postgres, e.g. `postgres://eos:...@openpak-postgres:5432/eos?sslmode=disable`): the
 PUID -> BAAS user id and Epic account -> BAAS user id maps (`eos_owners`), written at each login and read
-back on a cache miss, so a restart forgets nobody. Pool of 2. Database down: eosd keeps serving from
+back on a cache miss, so a restart forgets nobody; also `eos_accounts` (PUID <-> core account, the
+derived friend code, the pending-deletion flag) and `eos_invites` (Among Us lobby invites, kept an hour;
+the core's Invitations need a registered game session per recipient, which eosd does not open). Pool of 2. Database down: eosd keeps serving from
 memory, logs at ERROR level, retries the connection every 30 s and the write at the next login.
 Unset: memory only (development).
 

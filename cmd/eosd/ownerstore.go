@@ -132,6 +132,10 @@ func (s *server) startStore(ctx context.Context, url string) {
 		if err != nil {
 			return err
 		}
+		if err := s.acct.attach(cctx, db.pool); err != nil {
+			db.pool.Close()
+			return err
+		}
 		s.db.Store(db)
 		return nil
 	}

@@ -4,12 +4,14 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"log"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"os"
 	"strings"
+	"sync"
 	"testing"
 )
 
@@ -24,13 +26,122 @@ func stubIdentity(t *testing.T, status int, body string) identityClient {
 	return identityClient{url: srv.URL}
 }
 
+// fakeCore is the account core's Social service as a graph in memory: account = "acct-" + BAAS id.
+type fakeCore struct {
+	mu                       sync.Mutex
+	friends, pending, blocks map[string]map[string]bool // pending: to -> from
+}
+
+func newFakeCore() *fakeCore {
+	return &fakeCore{friends: map[string]map[string]bool{}, pending: map[string]map[string]bool{}, blocks: map[string]map[string]bool{}}
+}
+
+func set(m map[string]map[string]bool, a, b string, on bool) {
+	if m[a] == nil {
+		m[a] = map[string]bool{}
+	}
+	if on {
+		m[a][b] = true
+	} else {
+		delete(m[a], b)
+	}
+}
+
+func keys(m map[string]bool) []string {
+	var out []string
+	for k := range m {
+		out = append(out, k)
+	}
+	return out
+}
+
+func (f *fakeCore) AccountOf(_ context.Context, baas string) (string, error) {
+	return "acct-" + baas, nil
+}
+func (f *fakeCore) Request(_ context.Context, from, to string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.pending[from][to] {
+		return errors.New("reverse pending")
+	}
+	set(f.pending, to, from, true)
+	return nil
+}
+func (f *fakeCore) Accept(_ context.Context, me, req string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if !f.pending[me][req] {
+		return errors.New("not pending")
+	}
+	set(f.pending, me, req, false)
+	set(f.friends, me, req, true)
+	set(f.friends, req, me, true)
+	return nil
+}
+func (f *fakeCore) Remove(_ context.Context, a, b string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	set(f.friends, a, b, false)
+	set(f.friends, b, a, false)
+	set(f.pending, a, b, false)
+	set(f.pending, b, a, false)
+	return nil
+}
+func (f *fakeCore) Friends(_ context.Context, a string) ([]string, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return keys(f.friends[a]), nil
+}
+func (f *fakeCore) Incoming(_ context.Context, a string) ([]string, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return keys(f.pending[a]), nil
+}
+func (f *fakeCore) Outgoing(_ context.Context, a string) ([]string, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var out []string
+	for to, from := range f.pending {
+		if from[a] {
+			out = append(out, to)
+		}
+	}
+	return out, nil
+}
+func (f *fakeCore) Block(_ context.Context, a, b string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	set(f.blocks, a, b, true)
+	return nil
+}
+func (f *fakeCore) Unblock(_ context.Context, a, b string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	set(f.blocks, a, b, false)
+	return nil
+}
+func (f *fakeCore) Blocks(_ context.Context, a string) ([]string, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return keys(f.blocks[a]), nil
+}
+
+// playsAmongUs gives a PUID a BAAS id the way a Connect login would.
+func playsAmongUs(s *server, puids ...string) {
+	for _, p := range puids {
+		s.rememberOwner(p, "baas-"+p)
+	}
+}
+
 func testServer(t *testing.T) *server {
 	t.Helper()
 	sg, err := loadSigner("")
 	if err != nil {
 		t.Fatal(err)
 	}
-	return newServer(stubIdentity(t, 200, `{"pid":918273645,"baas_user_id":"f00dfacecafe0123","nickname":"Zorblaxa"}`), sg, []byte("secret"))
+	s := newServer(stubIdentity(t, 200, `{"pid":918273645,"baas_user_id":"f00dfacecafe0123","nickname":"Zorblaxa"}`), sg, []byte("secret"))
+	s.core = newFakeCore()
+	return s
 }
 
 func do(s *server, method, target string, body string, hdr map[string]string) *httptest.ResponseRecorder {
@@ -133,6 +244,7 @@ func TestKWSAnswersAnAdult(t *testing.T) {
 
 func TestInnerslothFriendsFlow(t *testing.T) {
 	s := testServer(t)
+	playsAmongUs(s, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb")
 	tokA := s.signer.sign(map[string]any{"sub": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "t": "connect"})
 	tokB := s.signer.sign(map[string]any{"sub": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "t": "connect"})
 	call := func(tok, method, path, body string) map[string]any {

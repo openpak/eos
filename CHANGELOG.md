@@ -2,6 +2,14 @@
 
 `git log` stays the source of truth; this file is the readable summary.
 
+## v0.6.0 — 2026-11-03
+
+- Among Us friends, friend requests and blocks now read and write the account core's Social service
+  (`ACCOUNT_GRPC_ADDR`, `ACCOUNT_INTERNAL_KEY`) instead of an in-memory graph; they are network-wide.
+  The PUID <-> core account map, friend codes, the pending-deletion flag and lobby invites are in Postgres
+  (`eos_accounts`, `eos_invites`). `blocked_by` is always empty (the core never says who blocked you).
+  Restart test against a real Postgres.
+
 ## v0.5.0 — 2026-11-03
 
 - `GET /internal/v1/owner/<id>` on the health listener: BAAS user id for a PUID or an Epic account id

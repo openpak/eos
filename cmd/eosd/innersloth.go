@@ -14,8 +14,8 @@ package main
 //
 //   - The friend code is username#discriminator. Both are derived from the PUID, so a player
 //     keeps one friend code for good with nothing stored: two words, four digits.
-//   - Friends, friend requests, blocks and lobby invites are kept in memory. Losing them on a
-//     restart loses a friends list, never a sign-in.
+//   - Friends, friend requests and blocks are the account core's (corefriends.go); the PUID <-> core
+//     account mapping, the pending-deletion flag and lobby invites are in Postgres (accounts.go).
 
 import (
 	"crypto/sha256"
@@ -26,7 +26,6 @@ import (
 	"log"
 	"net/http"
 	"strings"
-	"sync"
 
 	"openpak/eos/redact"
 )
@@ -59,51 +58,6 @@ func fullCode(puid string) string {
 	return n + "#" + d
 }
 
-// social is the in-memory friends graph.
-type social struct {
-	mu       sync.Mutex
-	byCode   map[string]string          // friend code -> PUID, for everyone seen since boot
-	friends  map[string]map[string]bool // PUID -> friend PUIDs
-	requests map[string]map[string]bool // recipient -> senders
-	blocks   map[string]map[string]bool // blocker -> blocked
-	invites  map[string][]lobbyInvite   // recipient -> invites
-	deleting map[string]bool            // PUIDs with a pending account deletion
-}
-
-func (g *social) isDeleting(puid string) bool {
-	g.mu.Lock()
-	defer g.mu.Unlock()
-	return g.deleting[puid]
-}
-
-func (g *social) setDeleting(puid string, on bool) {
-	g.mu.Lock()
-	defer g.mu.Unlock()
-	if on {
-		g.deleting[puid] = true
-	} else {
-		delete(g.deleting, puid)
-	}
-}
-
-type lobbyInvite struct {
-	Sender, Recipient string
-	Room              json.RawMessage // room_code exactly as the sender's client wrote it
-}
-
-func newSocial() *social {
-	return &social{byCode: map[string]string{}, friends: map[string]map[string]bool{},
-		requests: map[string]map[string]bool{}, blocks: map[string]map[string]bool{},
-		invites: map[string][]lobbyInvite{}, deleting: map[string]bool{}}
-}
-
-func addTo(m map[string]map[string]bool, k, v string) {
-	if m[k] == nil {
-		m[k] = map[string]bool{}
-	}
-	m[k][v] = true
-}
-
 func (s *server) innersloth(w http.ResponseWriter, r *http.Request) {
 	path := strings.TrimPrefix(r.URL.Path, "/api/")
 	tok, err := bearer(r.Header.Get("Authorization"))
@@ -119,10 +73,8 @@ func (s *server) innersloth(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	body, _ := io.ReadAll(io.LimitReader(r.Body, 1<<16))
-	g := s.social
-	g.mu.Lock()
-	g.byCode[strings.ToLower(fullCode(puid))] = puid
-	g.mu.Unlock()
+	ctx := r.Context()
+	g := &socialCall{s: s, ctx: ctx, me: s.ensureMe(ctx, puid), puid: puid}
 
 	status := 200
 	var out any
@@ -134,37 +86,37 @@ func (s *server) innersloth(w http.ResponseWriter, r *http.Request) {
 		// Renaming: the friend code is derived, so the name stays; answer with it.
 		out = s.usernameDoc(puid)
 	case path == "user/friends" && r.Method == http.MethodGet:
-		out = data("friends", g.friendsDoc(puid))
+		out = data("friends", g.friendsDoc())
 	case path == "user/friends" && r.Method == http.MethodDelete:
-		g.unfriend(puid, q.Get("friend_puid"))
+		g.unfriend(q.Get("friend_puid"))
 		out = data("friends", map[string]any{})
 	case path == "user/friends/received-requests":
-		out = data("friend_requests", g.requestsDoc(puid))
+		out = data("friend_requests", g.requestsDoc())
 	case path == "user/friends/request-by-friendcode" && r.Method == http.MethodPost:
-		status, out = g.requestByCode(puid, body)
+		status, out = g.requestByCode(body)
 	case path == "user/friends/request" && r.Method == http.MethodPost:
-		status, out = g.request(puid, attr(body, "recipient_puid"))
+		status, out = g.request(attr(body, "recipient_puid"))
 	case path == "user/friends/request" && r.Method == http.MethodPut:
-		g.accept(puid, firstNonEmpty(q.Get("sender_puid"), attr(body, "sender_puid")))
+		g.accept(firstNonEmpty(q.Get("sender_puid"), attr(body, "sender_puid")))
 		out = data("friend_request", map[string]any{})
 	case path == "user/friends/request" && r.Method == http.MethodDelete:
-		g.deny(puid, firstNonEmpty(q.Get("sender_puid"), attr(body, "sender_puid")))
+		g.deny(firstNonEmpty(q.Get("sender_puid"), attr(body, "sender_puid")))
 		out = data("friend_request", map[string]any{})
 	case path == "user/blocks" && r.Method == http.MethodGet:
-		out = data("blocks", g.blocksDoc(puid))
+		out = data("blocks", g.blocksDoc())
 	case path == "user/blocks" && r.Method == http.MethodPost:
-		g.block(puid, attr(body, "recipient_puid"))
-		out = data("blocks", g.blocksDoc(puid))
+		g.block(attr(body, "recipient_puid"))
+		out = data("blocks", g.blocksDoc())
 	case path == "user/blocks" && r.Method == http.MethodDelete:
-		g.unblock(puid, q.Get("recipient_puid"))
-		out = data("blocks", g.blocksDoc(puid))
+		g.unblock(q.Get("recipient_puid"))
+		out = data("blocks", g.blocksDoc())
 	case path == "user/lobby/invites" && r.Method == http.MethodGet:
-		out = data("lobby_invites", g.invitesDoc(puid))
+		out = data("lobby_invites", g.invitesDoc())
 	case path == "user/lobby/invites" && r.Method == http.MethodPost:
-		g.invite(puid, attr(body, "recipient_puid"), attrRaw(body, "room_code"))
+		g.invite(attr(body, "recipient_puid"), attrRaw(body, "room_code"))
 		out = data("lobby_invites", map[string]any{})
 	case path == "user/lobby/invites" && r.Method == http.MethodDelete:
-		g.dropInvite(puid, q.Get("sender_puid"))
+		g.dropInvite(q.Get("sender_puid"))
 		out = data("lobby_invites", map[string]any{})
 	case path == "user/report-player" && r.Method == http.MethodPost:
 		// PlayerReportRequest {game_server_id, game_id, reportee_client_id, reason_id}. Moderation
@@ -174,7 +126,7 @@ func (s *server) innersloth(w http.ResponseWriter, r *http.Request) {
 	case path == "user/accounts/deletion" && r.Method == http.MethodGet:
 		// The deletion STATUS: the client reads any 200 as "Account Deletion Pending" (measured
 		// 2026-10-24, Harbor), so a player with no request gets 404.
-		if !g.isDeleting(puid) {
+		if !g.isDeleting() {
 			status = 404
 			out = map[string]any{"errors": []any{map[string]any{"code": "404", "title": "Not Found"}}}
 			break
@@ -182,11 +134,11 @@ func (s *server) innersloth(w http.ResponseWriter, r *http.Request) {
 		out = data("account_deletion", map[string]any{})
 	case path == "user/accounts/deletion" && r.Method == http.MethodDelete:
 		// Cancelling a pending deletion.
-		g.setDeleting(puid, false)
+		g.setDeleting(false)
 		out = data("account_deletion", map[string]any{})
 	case path == "user/accounts/deletion":
-		g.forget(puid)
-		g.setDeleting(puid, true)
+		g.forget()
+		g.setDeleting(true)
 		out = data("account_deletion", map[string]any{})
 	case path == "announcements" && r.Method == http.MethodGet:
 		// AnnouncementList {announcements, page, pages}. No in-game news on OpenPak yet.
@@ -320,169 +272,4 @@ func firstNonEmpty(a, b string) string {
 		return a
 	}
 	return b
-}
-
-func (g *social) friendsDoc(puid string) map[string]any {
-	g.mu.Lock()
-	defer g.mu.Unlock()
-	friends := []any{}
-	for f := range g.friends[puid] {
-		friends = append(friends, map[string]any{"friend_puid": f, "friend_friendcode": fullCode(f)})
-	}
-	return map[string]any{"friends": friends}
-}
-
-func (g *social) requestsDoc(puid string) map[string]any {
-	g.mu.Lock()
-	defer g.mu.Unlock()
-	senders := []any{}
-	for s := range g.requests[puid] {
-		senders = append(senders, map[string]any{"sender_puid": s, "sender_friendcode": fullCode(s)})
-	}
-	return map[string]any{"senders": senders}
-}
-
-func (g *social) requestByCode(puid string, body []byte) (int, any) {
-	code := strings.ToLower(firstNonEmpty(attr(body, "recipient_friendcode"), attr(body, "username")))
-	g.mu.Lock()
-	to, ok := g.byCode[code]
-	g.mu.Unlock()
-	if !ok {
-		return 404, map[string]any{"errors": []any{map[string]any{"code": "404", "title": "Not Found", "detail": "no player with that friend code"}}}
-	}
-	return g.request(puid, to)
-}
-
-func (g *social) request(from, to string) (int, any) {
-	if to == "" || to == from {
-		return 400, map[string]any{"errors": []any{map[string]any{"code": "400", "title": "Bad Request"}}}
-	}
-	g.mu.Lock()
-	defer g.mu.Unlock()
-	if g.requests[from][to] {
-		// They had already asked us: that makes us friends.
-		delete(g.requests[from], to)
-		addTo(g.friends, from, to)
-		addTo(g.friends, to, from)
-	} else if !g.friends[from][to] {
-		addTo(g.requests, to, from)
-	}
-	return 200, data("friend_request", map[string]any{"recipient_puid": to, "recipient_friendcode": fullCode(to)})
-}
-
-func (g *social) accept(puid, sender string) {
-	g.mu.Lock()
-	defer g.mu.Unlock()
-	if g.requests[puid][sender] {
-		delete(g.requests[puid], sender)
-		addTo(g.friends, puid, sender)
-		addTo(g.friends, sender, puid)
-	}
-}
-
-func (g *social) deny(puid, sender string) {
-	g.mu.Lock()
-	defer g.mu.Unlock()
-	delete(g.requests[puid], sender)
-}
-
-func (g *social) unfriend(puid, other string) {
-	g.mu.Lock()
-	defer g.mu.Unlock()
-	delete(g.friends[puid], other)
-	delete(g.friends[other], puid)
-}
-
-func (g *social) blocksDoc(puid string) map[string]any {
-	g.mu.Lock()
-	defer g.mu.Unlock()
-	// ResponseBlockedWrapper: blocking holds {recipient_puid, recipient_friendcode},
-	// blocked_by holds {sender_puid, sender_friendcode}.
-	blocking, blockedBy := []any{}, []any{}
-	for b := range g.blocks[puid] {
-		blocking = append(blocking, map[string]any{"recipient_puid": b, "recipient_friendcode": fullCode(b)})
-	}
-	for b, set := range g.blocks {
-		if set[puid] {
-			blockedBy = append(blockedBy, map[string]any{"sender_puid": b, "sender_friendcode": fullCode(b)})
-		}
-	}
-	return map[string]any{"blocking": blocking, "blocked_by": blockedBy}
-}
-
-// forget drops everything kept about a player (user/accounts/deletion). The friend code is
-// derived from the PUID, so there is nothing else to delete.
-func (g *social) forget(puid string) {
-	g.mu.Lock()
-	defer g.mu.Unlock()
-	delete(g.byCode, strings.ToLower(fullCode(puid)))
-	for _, m := range []map[string]map[string]bool{g.friends, g.requests, g.blocks} {
-		delete(m, puid)
-		for _, set := range m {
-			delete(set, puid)
-		}
-	}
-	delete(g.invites, puid)
-	for to, list := range g.invites {
-		kept := list[:0:0]
-		for _, i := range list {
-			if i.Sender != puid {
-				kept = append(kept, i)
-			}
-		}
-		g.invites[to] = kept
-	}
-}
-
-func (g *social) block(puid, other string) {
-	if other == "" {
-		return
-	}
-	g.mu.Lock()
-	defer g.mu.Unlock()
-	addTo(g.blocks, puid, other)
-}
-
-func (g *social) unblock(puid, other string) {
-	g.mu.Lock()
-	defer g.mu.Unlock()
-	delete(g.blocks[puid], other)
-}
-
-func (g *social) invitesDoc(puid string) map[string]any {
-	g.mu.Lock()
-	defer g.mu.Unlock()
-	inv := []any{}
-	for _, i := range g.invites[puid] {
-		inv = append(inv, map[string]any{"sender_puid": i.Sender, "recipient_puid": i.Recipient, "room_code": i.Room,
-			"sender_friendcode": fullCode(i.Sender), "recipient_friendcode": fullCode(i.Recipient)})
-	}
-	return map[string]any{"next_poll_seconds": 15, "invites": inv}
-}
-
-func (g *social) invite(from, to string, room json.RawMessage) {
-	if to == "" || string(room) == "null" || string(room) == `""` {
-		return
-	}
-	g.mu.Lock()
-	defer g.mu.Unlock()
-	list := g.invites[to][:0:0]
-	for _, i := range g.invites[to] {
-		if i.Sender != from {
-			list = append(list, i)
-		}
-	}
-	g.invites[to] = append(list, lobbyInvite{Sender: from, Recipient: to, Room: room})
-}
-
-func (g *social) dropInvite(puid, sender string) {
-	g.mu.Lock()
-	defer g.mu.Unlock()
-	list := g.invites[puid][:0:0]
-	for _, i := range g.invites[puid] {
-		if sender != "" && i.Sender != sender {
-			list = append(list, i)
-		}
-	}
-	g.invites[puid] = list
 }

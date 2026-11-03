@@ -68,7 +68,8 @@ type server struct {
 	ids    identityClient
 	signer *signer
 	secret []byte
-	social *social
+	acct   *accounts
+	core   friendsCore // the account core; nil when not configured
 	// lobbies: the lobbies the lobby socket created, which searches read.
 	lobbies *lobbyStore
 	// epicNames: Epic account id -> console nickname, learned at EOS Auth login.
@@ -82,7 +83,7 @@ type server struct {
 }
 
 func newServer(ids identityClient, sg *signer, secret []byte) *server {
-	return &server{ids: ids, signer: sg, secret: secret, social: newSocial(), lobbies: newLobbyStore()}
+	return &server{ids: ids, signer: sg, secret: secret, acct: newAccounts(), core: newCoreFromEnv(), lobbies: newLobbyStore()}
 }
 
 func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
