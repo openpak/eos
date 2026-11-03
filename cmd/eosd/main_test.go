@@ -194,3 +194,28 @@ func TestLogsCarryNoPersonalData(t *testing.T) {
 		t.Error("unhandled request not logged")
 	}
 }
+
+func TestPuidOwner(t *testing.T) {
+	t.Setenv("EOS_INTERNAL_KEY", "k")
+	s := testServer(t)
+	puid := connectLogin(t, s)["product_user_id"].(string) // the login itself records the owner
+	h := http.HandlerFunc(s.puidOwner)
+	get := func(path, key string) *httptest.ResponseRecorder {
+		req := httptest.NewRequest("GET", path, nil)
+		if key != "" {
+			req.Header.Set("X-Internal-Key", key)
+		}
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, req)
+		return rec
+	}
+	if r := get("/internal/v1/puid/"+puid, "k"); r.Code != 200 || !strings.Contains(r.Body.String(), "f00dfacecafe0123") {
+		t.Fatalf("known: %d %s", r.Code, r.Body)
+	}
+	if r := get("/internal/v1/puid/"+puid, "bad"); r.Code != 401 {
+		t.Fatalf("bad key: %d", r.Code)
+	}
+	if r := get("/internal/v1/puid/nope", "k"); r.Code != 404 {
+		t.Fatalf("unknown: %d", r.Code)
+	}
+}

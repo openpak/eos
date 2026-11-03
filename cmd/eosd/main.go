@@ -50,6 +50,7 @@ func main() {
 		h.HandleFunc("/health", func(w http.ResponseWriter, _ *http.Request) {
 			writeJSON(w, 200, map[string]any{"status": "ok"})
 		})
+		h.HandleFunc("/internal/v1/puid/", s.puidOwner)
 		log.Printf("[eos] health on %s", *healthAddr)
 		log.Fatal(http.ListenAndServe(*healthAddr, h))
 	}()
@@ -68,6 +69,9 @@ type server struct {
 	lobbies *lobbyStore
 	// epicNames: Epic account id -> console nickname, learned at EOS Auth login.
 	epicNames sync.Map
+	// epicOwners: Epic account id -> BAAS user id; owners: PUID -> BAAS user id (puidowner.go).
+	epicOwners sync.Map
+	owners     sync.Map
 }
 
 func newServer(ids identityClient, sg *signer, secret []byte) *server {

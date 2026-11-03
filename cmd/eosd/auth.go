@@ -94,6 +94,7 @@ func (s *server) connectLogin(w http.ResponseWriter, r *http.Request, clientID, 
 	in := ids{client: clientID, deployment: r.PostForm.Get("deployment_id")}
 	ext := r.PostForm.Get("external_auth_token")
 	var account string // who the player is to us: a BAAS user id or a device id
+	var baasID string  // the BAAS user id behind account when it has one (puidowner.go)
 	switch {
 	case nintendoTypes[extType]:
 		p, err := s.ids.byIDToken(ext)
@@ -112,6 +113,7 @@ func (s *server) connectLogin(w http.ResponseWriter, r *http.Request, clientID, 
 			return
 		}
 		account = "baas:" + p.BaasUserID
+		baasID = p.BaasUserID
 	case extType == "epicgames_access_token" || extType == "epicgames_id_token":
 		// Connect on top of EOS Auth: the Epic account token epicauth.go issued.
 		c, err := s.signer.verify(ext)
@@ -120,6 +122,9 @@ func (s *server) connectLogin(w http.ResponseWriter, r *http.Request, clientID, 
 			return
 		}
 		account = "epic:" + str(c, "sub")
+		if v, ok := s.epicOwners.Load(str(c, "sub")); ok {
+			baasID = v.(string)
+		}
 	case extType == "deviceid_access_token":
 		c, err := s.signer.verify(ext)
 		if err != nil || c["t"] != "device" {
@@ -134,6 +139,9 @@ func (s *server) connectLogin(w http.ResponseWriter, r *http.Request, clientID, 
 	}
 
 	puid := s.puid(in.deployment, account)
+	if baasID != "" {
+		s.rememberOwner(puid, baasID)
+	}
 	now := time.Now()
 	exp := now.Add(tokenTTL)
 	common := map[string]any{

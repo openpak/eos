@@ -2,6 +2,13 @@
 
 `git log` stays the source of truth; this file is the readable summary.
 
+## v0.3.0 — 2026-11-03
+
+- Connect login remembers PUID -> BAAS user id (memory), served to Impostor on
+  `GET /internal/v1/puid/<puid>` (health listener, `EOS_INTERNAL_KEY`) so Among Us rooms can
+  report `game_sessions.among-us` to rewards. eosd itself sends no rewards events: lobbies are
+  not served yet, and TMNT sessions are already counted by switch-nex (docs/deploy.md).
+
 ## v0.2.0 — 2026-11-02
 
 - Release from main; replaces the hand-built production image.
