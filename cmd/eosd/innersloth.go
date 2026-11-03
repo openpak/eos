@@ -68,7 +68,7 @@ func (s *server) innersloth(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if puid == "" {
-		log.Printf("[innersloth] %s %s -> 401 (no EOS token of ours; headers=%s)", r.Method, logPath(r.URL.Path), headerNames(r.Header))
+		log.Printf("[innersloth] %s %s -> 401 (no EOS token of ours)", r.Method, logPath(r.URL.Path))
 		writeJSON(w, 401, map[string]any{"errors": []any{map[string]any{"code": "401", "title": "Unauthorized"}}})
 		return
 	}
@@ -161,12 +161,11 @@ func (s *server) innersloth(w http.ResponseWriter, r *http.Request) {
 		// Reply shape unmeasured: echo the request's attributes.
 		out = data("receipt", attrsOf(body))
 	default:
-		log.Printf("[innersloth] !! unhandled %s %s%s headers=%s body=%s", r.Method, logPath(r.URL.Path),
-			logQuery(r.URL.RawQuery), headerNames(r.Header), bodyShape(r.Header.Get("Content-Type"), body))
+		log.Printf("[innersloth] !! unhandled %s %s", r.Method, logPath(r.URL.Path))
 		writeJSON(w, 404, map[string]any{"errors": []any{map[string]any{"code": "404", "title": "Not Found"}}})
 		return
 	}
-	log.Printf("[innersloth] %s %s%s user=%s -> %d", r.Method, logPath(r.URL.Path), logQuery(r.URL.RawQuery), redact.Tag(puid), status)
+	log.Printf("[innersloth] %s %s user=%s -> %d", r.Method, logPath(r.URL.Path), redact.Tag(puid), status)
 	writeJSON(w, status, out)
 }
 

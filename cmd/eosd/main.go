@@ -24,6 +24,8 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"openpak/eos/httplog"
 )
 
 var (
@@ -37,6 +39,7 @@ var (
 
 func main() {
 	flag.Parse()
+	httplog.PathFunc = logPath
 	signer, err := loadSigner(*keyFile)
 	if err != nil {
 		log.Fatalf("[eos] signing key: %v", err)
@@ -56,11 +59,11 @@ func main() {
 		h.HandleFunc("/internal/v1/puid/", s.puidOwner)
 		h.HandleFunc("/internal/v1/owner/", s.puidOwner)
 		log.Printf("[eos] health on %s", *healthAddr)
-		log.Fatal(http.ListenAndServe(*healthAddr, h))
+		log.Fatal(http.ListenAndServe(*healthAddr, httplog.Middleware(h)))
 	}()
 
 	log.Printf("[eos] serving the EOS API on %s", *addr)
-	srv := &http.Server{Addr: *addr, Handler: s, ReadHeaderTimeout: 30 * time.Second}
+	srv := &http.Server{Addr: *addr, Handler: httplog.Middleware(s), ReadHeaderTimeout: 30 * time.Second}
 	log.Fatal(srv.ListenAndServe())
 }
 
@@ -91,13 +94,7 @@ func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		s.innersloth(w, r)
 		return
 	}
-	rec := &recorder{ResponseWriter: w, status: 200}
-	start := time.Now()
-	handled := s.route(rec, r)
-	if handled {
-		log.Printf("[eos] %s %s%s -> %d (%s)", r.Method, logPath(r.URL.Path), logQuery(r.URL.RawQuery),
-			rec.status, time.Since(start).Round(time.Millisecond))
-	}
+	s.route(w, r)
 }
 
 // route dispatches one request; false means it went to the catch-all, which logs on its own.
@@ -148,8 +145,7 @@ func (s *server) route(w http.ResponseWriter, r *http.Request) bool {
 // never a value. Every line here is the specification of the next handler.
 func (s *server) unhandled(w http.ResponseWriter, r *http.Request) {
 	body, _ := io.ReadAll(io.LimitReader(r.Body, 1<<16))
-	log.Printf("[eos] !! unhandled %s %s %s%s headers=%s body=%s", r.Method, r.Host, logPath(r.URL.Path),
-		logQuery(r.URL.RawQuery), headerNames(r.Header), bodyShape(r.Header.Get("Content-Type"), body))
+	log.Printf("[eos] !! unhandled %s %s %s", r.Method, r.Host, logPath(r.URL.Path))
 	if trace {
 		log.Printf("[eos] !! unhandled body %s", body)
 	}

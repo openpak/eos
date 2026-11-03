@@ -2,6 +2,12 @@
 
 `git log` stays the source of truth; this file is the readable summary.
 
+## v0.6.1 — 2026-11-03
+
+- One log line per request: `http <method> <path> -> <status> <ms>ms` (ids in the path replaced by tags),
+  on the API and the health listener; `/healthz` skipped. Query strings, header names and body shapes
+  are no longer logged, including on unhandled requests.
+
 ## v0.6.0 — 2026-11-03
 
 - Among Us friends, friend requests and blocks now read and write the account core's Social service
