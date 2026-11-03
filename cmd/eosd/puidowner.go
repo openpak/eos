@@ -24,8 +24,12 @@ func (s *server) puidOwner(w http.ResponseWriter, r *http.Request) {
 		writeError(w, 401, "errors.com.epicgames.common.unauthorized", "unauthorized")
 		return
 	}
-	puid := strings.TrimPrefix(r.URL.Path, "/internal/v1/puid/")
-	v, ok := s.owner(kindPUID, puid)
+	// /internal/v1/puid/<puid>, or /internal/v1/owner/<id> for an id that may be a PUID or an Epic account id.
+	id := strings.TrimPrefix(strings.TrimPrefix(r.URL.Path, "/internal/v1/puid/"), "/internal/v1/owner/")
+	v, ok := s.owner(kindPUID, id)
+	if !ok && strings.HasPrefix(r.URL.Path, "/internal/v1/owner/") {
+		v, ok = s.owner(kindEpic, id)
+	}
 	if r.Method != http.MethodGet || !ok {
 		writeError(w, 404, "errors.com.epicgames.common.not_found", "not found")
 		return

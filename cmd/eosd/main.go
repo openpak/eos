@@ -54,6 +54,7 @@ func main() {
 			writeJSON(w, 200, map[string]any{"status": "ok"})
 		})
 		h.HandleFunc("/internal/v1/puid/", s.puidOwner)
+		h.HandleFunc("/internal/v1/owner/", s.puidOwner)
 		log.Printf("[eos] health on %s", *healthAddr)
 		log.Fatal(http.ListenAndServe(*healthAddr, h))
 	}()

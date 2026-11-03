@@ -17,7 +17,7 @@ memory, logs at ERROR level, retries the connection every 30 s and the write at 
 Unset: memory only (development).
 
 `EOS_INTERNAL_KEY` (optional): turns on `GET /internal/v1/puid/<puid>` on the health listener (22621,
-never routed by Traefik), which answers `{"baas_user_id":"..."}` for a PUID this process issued at a
+never routed by Traefik), which answers `{"baas_user_id":"..."}` (also `/internal/v1/owner/<id>`, where id may be a PUID or an Epic account id, for Fall Guys) for a PUID this process issued at a
 Connect login (kept in Postgres), 404 otherwise. Impostor (`among-us`) calls it, with the same key, to tell rewards
 who is in an Among Us room. Unset: the endpoint answers 401.
 

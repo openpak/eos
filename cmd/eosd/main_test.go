@@ -216,6 +216,13 @@ func TestPuidOwner(t *testing.T) {
 	if r := get("/internal/v1/puid/"+puid, "bad"); r.Code != 401 {
 		t.Fatalf("bad key: %d", r.Code)
 	}
+	s.remember(kindEpic, "epicacct9", "f00dfacecafe0123")
+	if r := get("/internal/v1/owner/epicacct9", "k"); r.Code != 200 {
+		t.Fatalf("owner by epic id: %d", r.Code)
+	}
+	if r := get("/internal/v1/owner/"+puid, "k"); r.Code != 200 {
+		t.Fatalf("owner by puid: %d", r.Code)
+	}
 	if r := get("/internal/v1/puid/nope", "k"); r.Code != 404 {
 		t.Fatalf("unknown: %d", r.Code)
 	}

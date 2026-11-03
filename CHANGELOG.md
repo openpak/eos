@@ -2,6 +2,11 @@
 
 `git log` stays the source of truth; this file is the readable summary.
 
+## v0.5.0 — 2026-11-03
+
+- `GET /internal/v1/owner/<id>` on the health listener: BAAS user id for a PUID or an Epic account id
+  (Fall Guys' catapultd logs in with the Epic account id).
+
 ## v0.4.0 — 2026-11-03
 
 - The PUID -> BAAS and Epic account -> BAAS maps live in Postgres (`EOS_DATABASE_URL`, table
