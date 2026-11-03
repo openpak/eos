@@ -83,7 +83,7 @@ func (s *server) epicToken(w http.ResponseWriter, r *http.Request) {
 
 func (s *server) epicTokens(clientID, baasID, scope string) map[string]any {
 	acct := s.epicAccountID(baasID)
-	s.epicOwners.Store(acct, baasID)
+	s.remember(kindEpic, acct, baasID)
 	now := time.Now()
 	exp, rexp := now.Add(tokenTTL), now.Add(30*24*time.Hour)
 	if scope == "" {

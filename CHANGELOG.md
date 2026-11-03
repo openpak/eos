@@ -2,6 +2,12 @@
 
 `git log` stays the source of truth; this file is the readable summary.
 
+## v0.4.0 — 2026-11-03
+
+- The PUID -> BAAS and Epic account -> BAAS maps live in Postgres (`EOS_DATABASE_URL`, table
+  `eos_owners`), memory is only a cache; restart test against a real Postgres
+  (`EOS_TEST_DATABASE_URL`).
+
 ## v0.3.0 — 2026-11-03
 
 - Connect login remembers PUID -> BAAS user id (memory), served to Impostor on

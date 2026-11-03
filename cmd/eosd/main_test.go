@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"log"
 	"net/http"
@@ -217,5 +218,40 @@ func TestPuidOwner(t *testing.T) {
 	}
 	if r := get("/internal/v1/puid/nope", "k"); r.Code != 404 {
 		t.Fatalf("unknown: %d", r.Code)
+	}
+}
+
+// A restart against a real Postgres (EOS_TEST_DATABASE_URL): the owner maps survive a new process.
+func TestOwnerMapSurvivesRestart(t *testing.T) {
+	url := os.Getenv("EOS_TEST_DATABASE_URL")
+	if url == "" {
+		t.Skip("EOS_TEST_DATABASE_URL not set")
+	}
+	t.Setenv("EOS_INTERNAL_KEY", "k")
+	a := testServer(t)
+	a.startStore(context.Background(), url)
+	if a.db.Load() == nil {
+		t.Fatal("no store")
+	}
+	puid := connectLogin(t, a)["product_user_id"].(string)
+	a.remember(kindEpic, "epicacct1", "f00dfacecafe0123")
+
+	b := testServer(t) // the "restarted" process: empty memory
+	b.startStore(context.Background(), url)
+	if v, ok := b.owner(kindPUID, puid); !ok || v != "f00dfacecafe0123" {
+		t.Fatalf("puid after restart: %q %v", v, ok)
+	}
+	if v, ok := b.owner(kindEpic, "epicacct1"); !ok || v != "f00dfacecafe0123" {
+		t.Fatalf("epic after restart: %q %v", v, ok)
+	}
+	req := httptest.NewRequest("GET", "/internal/v1/puid/"+puid, nil)
+	req.Header.Set("X-Internal-Key", "k")
+	rec := httptest.NewRecorder()
+	http.HandlerFunc(b.puidOwner).ServeHTTP(rec, req)
+	if rec.Code != 200 {
+		t.Fatalf("lookup after restart: %d", rec.Code)
+	}
+	if _, ok := b.owner(kindPUID, "nope"); ok {
+		t.Fatal("unknown found")
 	}
 }

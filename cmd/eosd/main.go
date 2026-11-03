@@ -13,6 +13,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"flag"
 	"io"
@@ -21,6 +22,7 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -44,6 +46,7 @@ func main() {
 		*idSecret = randomHex(32)
 	}
 	s := newServer(newIdentityClient(), signer, []byte(*idSecret))
+	s.startStore(context.Background(), os.Getenv("EOS_DATABASE_URL"))
 
 	go func() {
 		h := http.NewServeMux()
@@ -70,8 +73,11 @@ type server struct {
 	// epicNames: Epic account id -> console nickname, learned at EOS Auth login.
 	epicNames sync.Map
 	// epicOwners: Epic account id -> BAAS user id; owners: PUID -> BAAS user id (puidowner.go).
+	// Both are caches in front of Postgres (ownerstore.go).
 	epicOwners sync.Map
 	owners     sync.Map
+	persisted  sync.Map // keys of owners/epicOwners already written to Postgres
+	db         atomic.Pointer[ownerStore]
 }
 
 func newServer(ids identityClient, sg *signer, secret []byte) *server {

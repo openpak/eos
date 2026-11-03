@@ -122,9 +122,7 @@ func (s *server) connectLogin(w http.ResponseWriter, r *http.Request, clientID, 
 			return
 		}
 		account = "epic:" + str(c, "sub")
-		if v, ok := s.epicOwners.Load(str(c, "sub")); ok {
-			baasID = v.(string)
-		}
+		baasID, _ = s.owner(kindEpic, str(c, "sub"))
 	case extType == "deviceid_access_token":
 		c, err := s.signer.verify(ext)
 		if err != nil || c["t"] != "device" {
