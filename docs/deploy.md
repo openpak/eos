@@ -26,6 +26,15 @@ never routed by Traefik), which answers `{"baas_user_id":"..."}` (also `/interna
 Connect login (kept in Postgres), 404 otherwise. Impostor (`among-us`) calls it, with the same key, to tell rewards
 who is in an Among Us room. Unset: the endpoint answers 401.
 
+## Account erasure
+
+`DELETE /internal/accounts/{account_id}/data` on the health listener (`http://openpak-eos:22621`, never routed
+by Traefik), header `Authorization: Bearer <ACCOUNT_ERASE_KEY>`; key unset answers 503. Answers
+`{"service":"eos","rows":N}`. Erases the account's `eos_accounts` row, every `eos_invites` row it sent or
+received, the `eos_owners` rows (PUID and Epic id -> BAAS id) and the in-memory caches. It resolves the ids
+from `eos_accounts` and, when `ACCOUNT_GRPC_ADDR` is set, from the core's switch links. Friends, requests and
+blocks live in the core and go with it. Nothing is kept: eosd stores no authored content.
+
 ## Rewards events
 
 eosd sends none. The lobby websocket is not served yet (`lobby.go`: the store is always empty,

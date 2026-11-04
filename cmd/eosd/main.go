@@ -58,6 +58,7 @@ func main() {
 		})
 		h.HandleFunc("/internal/v1/puid/", s.puidOwner)
 		h.HandleFunc("/internal/v1/owner/", s.puidOwner)
+		h.HandleFunc("/internal/accounts/", s.eraseHandler)
 		log.Printf("[eos] health on %s", *healthAddr)
 		log.Fatal(http.ListenAndServe(*healthAddr, httplog.Middleware(h)))
 	}()

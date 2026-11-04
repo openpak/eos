@@ -2,6 +2,14 @@
 
 `git log` stays the source of truth; this file is the readable summary.
 
+## v0.7.0 — 2026-11-04
+
+- Account erasure (prds#120): `DELETE /internal/accounts/{account_id}/data` on the health listener (22621,
+  `Authorization: Bearer $ACCOUNT_ERASE_KEY`; unset key = 503). Removes the account's `eos_accounts`,
+  `eos_invites` (sent and received), `eos_owners` (PUID and Epic id maps, found through `eos_accounts` and the
+  core's switch links) and the memory caches; idempotent; logs one `account erased` line. Friends, requests
+  and blocks are the core's. Nothing authored is kept: eosd stores no content.
+
 ## v0.6.1 — 2026-11-03
 
 - One log line per request: `http <method> <path> -> <status> <ms>ms` (ids in the path replaced by tags),
